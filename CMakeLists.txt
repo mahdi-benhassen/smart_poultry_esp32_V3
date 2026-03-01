@@ -1,5 +1,5 @@
-# For ESP-IDF v4.4+
-cmake_minimum_required(VERSION 3.5)
+# For ESP-IDF v5.x+ (requires CMake 3.16 or higher)
+cmake_minimum_required(VERSION 3.16)
 
 # Set project name
 set(PROJECT_NAME "smart_poultry")
