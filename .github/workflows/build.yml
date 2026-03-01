@@ -1,0 +1,135 @@
+name: Build ESP32 Firmware
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+env:
+  ESP_IDF_VERSION: v5.3
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install ESP-IDF prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git wget flex bison gperf python3 python3-pip python3-venv \
+            cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+            
+      - name: Download ESP-IDF
+        run: |
+          mkdir -p $HOME/esp
+          cd $HOME/esp
+          git clone -b ${{ env.ESP_IDF_VERSION }} --recursive --depth 1 \
+            https://github.com/espressif/esp-idf.git
+          
+      - name: Install ESP-IDF
+        run: |
+          $HOME/esp/esp-idf/install.sh esp32
+        shell: bash
+        
+      - name: Set up ESP-IDF environment
+        run: |
+          . $HOME/esp/esp-idf/export.sh
+          idf.py --version
+        shell: bash
+        
+      - name: Configure project
+        run: |
+          . $HOME/esp/esp-idf/export.sh
+          idf.py reconfigure
+        shell: bash
+        
+      - name: Build firmware
+        run: |
+          . $HOME/esp/esp-idf/export.sh
+          idf.py build
+        shell: bash
+        
+      - name: Get firmware size
+        run: |
+          ls -lh build/bootloader/bootloader.bin
+          ls -lh build/partition_table/partition-table.bin
+          ls -lh build/*.bin
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32-firmware
+          path: |
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/*.bin
+          retention-days: 7
+          
+      - name: Upload build directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32-build
+          path: build/
+          retention-days: 7
+
+  build-release:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          
+      - name: Download ESP-IDF
+        run: |
+          mkdir -p $HOME/esp
+          cd $HOME/esp
+          git clone -b ${{ env.ESP_IDF_VERSION }} --recursive --depth 1 \
+            https://github.com/espressif/esp-idf.git
+          
+      - name: Install ESP-IDF
+        run: |
+          $HOME/esp/esp-idf/install.sh esp32
+        shell: bash
+        
+      - name: Set up ESP-IDF environment
+        run: |
+          . $HOME/esp/esp-idf/export.sh
+          idf.py --version
+        shell: bash
+        
+      - name: Configure project
+        run: |
+          . $HOME/esp/esp-idf/export.sh
+          idf.py reconfigure
+        shell: bash
+        
+      - name: Build firmware
+        run: |
+          . $HOME/esp/esp-idf/export.sh
+          idf.py build
+        shell: bash
+        
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          files: |
+            build/*.bin
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
