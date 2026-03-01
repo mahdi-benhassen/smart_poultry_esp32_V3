@@ -27,32 +27,14 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building release version: $VERSION"
           
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Build with ESP-IDF CI Action
+        uses: espressif/esp-idf-ci-action@v1
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install ESP-IDF
-        uses: espressif/install-esp-idf-action@v1
-        with:
-          version: ${{ env.ESP_IDF_VERSION }}
-
-      - name: Set up ESP-IDF environment
-        run: |
-          idf.py --version
-        shell: bash
-        
-      - name: Configure project
-        run: |
-          export IDF_TARGET=esp32
-          idf.py reconfigure
-        shell: bash
-        
-      - name: Build firmware
-        run: |
-          export IDF_TARGET=esp32
-          idf.py build
-        shell: bash
+          esp_idf_version: ${{ env.ESP_IDF_VERSION }}
+          target: esp32
+          command: |
+            idf.py reconfigure
+            idf.py build
         
       - name: Rename firmware for release
         run: |
