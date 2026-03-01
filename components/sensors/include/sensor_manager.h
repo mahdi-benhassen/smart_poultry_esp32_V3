@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 #include <esp_err.h>
+#include <driver/gpio.h>
+#include <driver/adc.h>
 
 /* Sensor types */
 typedef enum {

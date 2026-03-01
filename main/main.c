@@ -99,8 +99,8 @@ static esp_err_t init_wifi(void)
                 .threshold.authmode = WIFI_AUTH_WPA2_PSK,
             },
         };
-        memcpy(sta_config.sta.ssid, wifi_config.wifi_ssid, sizeof(wifi_config.sta.ssid));
-        memcpy(sta_config.sta.password, wifi_config.wifi_password, sizeof(wifi_config.sta.password));
+        memcpy(sta_config.sta.ssid, wifi_config.wifi_ssid, sizeof(wifi_config.wifi_ssid));
+        memcpy(sta_config.sta.password, wifi_config.wifi_password, sizeof(wifi_config.wifi_password));
         
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));

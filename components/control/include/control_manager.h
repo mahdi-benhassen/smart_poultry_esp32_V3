@@ -8,8 +8,7 @@
 #include <stdint.h>
 #include <esp_err.h>
 
-/* Forward declaration */
-typedef struct sensor_data sensor_data_t;
+#include "main.h"
 
 /**
  * @brief Initialize control system

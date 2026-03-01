@@ -7,9 +7,8 @@ set(PROJECT_NAME "smart_poultry")
 # Include ESP-IDF
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
-# Set C standard
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+# Include ESP-IDF
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 # Project sources
 project(${PROJECT_NAME})

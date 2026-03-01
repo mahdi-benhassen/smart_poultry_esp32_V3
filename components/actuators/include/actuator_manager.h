@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <esp_err.h>
+#include <driver/gpio.h>
 
 /* Actuator types */
 typedef enum {
