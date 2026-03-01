@@ -6,5 +6,5 @@ idf_component_register(
         "nvs_storage.c"
     INCLUDE_DIRS 
         "include"
-    REQUIRES esp32 nvs spiffs
+    REQUIRES nvs spiffs
 )

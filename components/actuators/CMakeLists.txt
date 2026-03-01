@@ -12,5 +12,5 @@ idf_component_register(
         "alarm.c"
     INCLUDE_DIRS 
         "include"
-    REQUIRES esp32 driver
+    REQUIRES driver
 )

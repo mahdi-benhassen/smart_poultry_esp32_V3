@@ -10,5 +10,5 @@ idf_component_register(
         "energy_optimizer.c"
     INCLUDE_DIRS 
         "include"
-    REQUIRES esp32 actuators sensors
+    REQUIRES actuators sensors
 )

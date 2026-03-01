@@ -13,5 +13,5 @@ idf_component_register(
         "sound_sensor.c"
     INCLUDE_DIRS 
         "include"
-    REQUIRES esp32 driver esp_adc_cal nvs
+    REQUIRES driver esp_adc_cal nvs
 )
