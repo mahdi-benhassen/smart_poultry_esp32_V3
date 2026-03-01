@@ -7,5 +7,5 @@ idf_component_register(
         "ota_update.c"
     INCLUDE_DIRS 
         "include"
-    REQUIRES esp_wifi esp_http_client mqtt nvs
+    REQUIRES esp_wifi esp_http_client mqtt nvs_flash
 )

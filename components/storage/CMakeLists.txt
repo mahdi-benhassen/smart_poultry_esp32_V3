@@ -6,5 +6,5 @@ idf_component_register(
         "nvs_storage.c"
     INCLUDE_DIRS 
         "include"
-    REQUIRES nvs spiffs
+    REQUIRES nvs_flash spiffs
 )
