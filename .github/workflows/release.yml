@@ -27,11 +27,16 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building release version: $VERSION"
           
-      - name: Install ESP-IDF
-        uses: espressif/setup-esp-idf@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          esp-idf-version: v5.1
-          python-version: '3.10'
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install ESP-IDF
+        uses: espressif/install-esp-idf-action@v1
+        with:
+          version: ${{ env.ESP_IDF_VERSION }}
+          path: '/home/runner/esp/esp-idf'
         
       - name: Set up ESP-IDF environment
         run: |
