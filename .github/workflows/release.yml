@@ -8,7 +8,7 @@ on:
 
 env:
   ESP_IDF_VERSION: v5.1
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.10'
 
 jobs:
   build-release:
@@ -27,28 +27,12 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building release version: $VERSION"
           
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          
-      - name: Install ESP-IDF prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git wget flex bison gperf python3 python3-pip python3-venv \
-            cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
-            
-      - name: Download ESP-IDF
-        run: |
-          mkdir -p $HOME/esp
-          cd $HOME/esp
-          git clone -b ${{ env.ESP_IDF_VERSION }} --recursive --depth 1 \
-            https://github.com/espressif/esp-idf.git
-          
       - name: Install ESP-IDF
-        run: |
-          $HOME/esp/esp-idf/install.sh esp32 --skip-gdbgui
-        shell: bash
+        uses: espressif/esp-idf-actions@v1.3.0
+        with:
+          espidf: 'v5.1'
+          python-version: '3.10'
+          target: esp32
         
       - name: Set up ESP-IDF environment
         run: |
