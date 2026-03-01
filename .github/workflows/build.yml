@@ -7,7 +7,7 @@ on:
     branches: [master, main]
 
 env:
-  ESP_IDF_VERSION: v5.3
+  ESP_IDF_VERSION: v4.4
   PYTHON_VERSION: '3.11'
 
 jobs:
@@ -45,12 +45,6 @@ jobs:
         run: |
           . $HOME/esp/esp-idf/export.sh
           idf.py --version
-        shell: bash
-        
-      - name: Set ESP32 target
-        run: |
-          . $HOME/esp/esp-idf/export.sh
-          idf.py set-target esp32
         shell: bash
         
       - name: Configure project
@@ -118,12 +112,6 @@ jobs:
         run: |
           . $HOME/esp/esp-idf/export.sh
           idf.py --version
-        shell: bash
-        
-      - name: Set ESP32 target
-        run: |
-          . $HOME/esp/esp-idf/export.sh
-          idf.py set-target esp32
         shell: bash
         
       - name: Configure project
