@@ -5,8 +5,9 @@
 #include <math.h>
 #include <esp_log.h>
 #include <esp_err.h>
-#include <driver/adc.h>
-#include <esp_adc_cal.h>
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 
 #include "mq135.h"
 
@@ -17,36 +18,35 @@ static const float MQ135_Curve[3] = {3.8912, -0.4704, 0.4176};  /* For NH3 */
 static const float MQ135_Curve_CO2[3] = {4.4887, -0.6468, 0.6328};  /* For CO2 */
 
 /* Global state */
-static adc1_channel_t s_adc_channel = ADC_CHANNEL_0;
+static adc_oneshot_unit_handle_t s_adc_handle = NULL;
+static adc_cali_handle_t s_cali_handle = NULL;
+static adc_channel_t s_adc_channel = ADC_CHANNEL_0;
 static float s_rl = MQ135_RL_VALUE;
 static float s_ro = MQ135_RO_CLEAN_AIR;
 static bool s_initialized = false;
-static esp_adc_cal_characteristics_t s_adc_chars;
 
 /**
  * @brief Initialize MQ-135 sensor
  */
-esp_err_t mq135_init(adc1_channel_t adc_channel)
+esp_err_t mq135_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel)
 {
-    s_adc_channel = adc_channel;
+    s_adc_handle = handle;
+    s_adc_channel = (adc_channel_t)adc_channel;
     
-    /* Configure ADC */
-    ESP_ERROR_CHECK(adc1_config_channel_atten(adc_channel, ADC_ATTEN_DB_11));
+    /* Calibration handle */
+    adc_cali_line_encoding_config_t cali_config = {
+        .unit_id = ADC_UNIT_1,
+        .atten = ADC_ATTEN_DB_11,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
     
-    /* Characterize ADC - use static buffer to avoid memory leak */
-    esp_adc_cal_characterize(
-        ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &s_adc_chars);
-    
-    if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-        ESP_LOGI(TAG, "eFuse Vref detected");
-    } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
-        ESP_LOGI(TAG, "eFuse Two Point detected");
-    } else {
-        ESP_LOGI(TAG, "Default Vref used");
+    esp_err_t ret = adc_cali_create_scheme_line_fitting(&cali_config, &s_cali_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "ADC calibration not supported: %s", esp_err_to_name(ret));
     }
     
     s_initialized = true;
-    ESP_LOGI(TAG, "MQ-135 initialized on ADC channel %d", adc_channel);
+    ESP_LOGI(TAG, "MQ-135 sensor initialized");
     
     return ESP_OK;
 }
@@ -65,19 +65,24 @@ esp_err_t mq135_read(float *ppm)
     }
     
     /* Read ADC value */
-    
- value */
-    uint32_t adc_reading = 0;
+    int adc_raw = 0;
+    int adc_reading = 0;
     for (int i = 0; i < 10; i++) {
-        adc_reading += adc1_get_raw(s_adc_channel);
+        ESP_ERROR_CHECK(adc_oneshot_read(s_adc_handle, s_adc_channel, &adc_raw));
+        adc_reading += adc_raw;
     }
     adc_reading /= 10;
     
     /* Convert to voltage */
-    uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, &s_adc_chars);
+    int voltage_mv = 0;
+    if (s_cali_handle) {
+        ESP_ERROR_CHECK(adc_cali_raw_to_voltage(s_cali_handle, adc_reading, &voltage_mv));
+    } else {
+        voltage_mv = (adc_reading * 3300) / 4095;
+    }
     
     /* Calculate Rs - add division by zero protection */
-    float v_voltage = voltage / 1000.0f;  /* Convert mV to V */
+    float v_voltage = voltage_mv / 1000.0f;  /* Convert mV to V */
     if (v_voltage < 0.01f) {
         v_voltage = 0.01f;  /* Prevent division by zero */
     }
@@ -93,7 +98,7 @@ esp_err_t mq135_read(float *ppm)
     if (*ppm < 0) *ppm = 0;
     if (*ppm > 1000) *ppm = 1000;
     
-    ESP_LOGD(TAG, "MQ-135: ADC=%u, Voltage=%.2fV, Rs=%.2f, Ratio=%.2f, PPM=%.1f",
+    ESP_LOGD(TAG, "MQ-135: ADC=%d, Voltage=%.2fV, Rs=%.2f, Ratio=%.2f, PPM=%.1f",
              adc_reading, v_voltage, rs, ratio, *ppm);
     
     return ESP_OK;
@@ -109,15 +114,23 @@ esp_err_t mq135_calibrate(float ro)
     }
     
     /* Read in clean air for calibration */
-    uint32_t adc_reading = 0;
+    int adc_raw = 0;
+    int adc_reading = 0;
     for (int i = 0; i < 50; i++) {
-        adc_reading += adc1_get_raw(s_adc_channel);
+        ESP_ERROR_CHECK(adc_oneshot_read(s_adc_handle, s_adc_channel, &adc_raw));
+        adc_reading += adc_raw;
         vTaskDelay(pdMS_TO_TICKS(100));
     }
     adc_reading /= 50;
     
-    uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, &s_adc_chars);
-    float v_voltage = voltage / 1000.0f;
+    int voltage_mv = 0;
+    if (s_cali_handle) {
+        ESP_ERROR_CHECK(adc_cali_raw_to_voltage(s_cali_handle, adc_reading, &voltage_mv));
+    } else {
+        voltage_mv = (adc_reading * 3300) / 4095;
+    }
+    
+    float v_voltage = voltage_mv / 1000.0f;
     float rs = ((5.0f - v_voltage) / v_voltage) * s_rl;
     
     s_ro = rs / 4.4f;  /* Clean air factor for NH3 */

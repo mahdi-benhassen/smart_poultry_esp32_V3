@@ -9,6 +9,9 @@
 #include <driver/adc.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 
 #include "sensor_manager.h"
 #include "dht22.h"
@@ -21,6 +24,9 @@
 #include "sound_sensor.h"
 
 static const char *TAG = "SENSOR_MGR";
+
+/* ADC Handle */
+static adc_oneshot_unit_handle_t s_adc_handle = NULL;
 
 /* Sensor configurations */
 static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
@@ -94,8 +100,35 @@ esp_err_t sensor_manager_init(void)
     
     ESP_LOGI(TAG, "Initializing sensors...");
     
-    /* Initialize ADC */
-    adc1_config_width(ADC_WIDTH_BIT_12);
+    /* Initialize ADC Oneshot Unit */
+    adc_oneshot_unit_init_config_t init_config = {
+        .unit_id = ADC_UNIT_1,
+        .ulp_mode = ADC_ULP_MODE_DISABLE,
+    };
+    ret = adc_oneshot_new_unit(&init_config, &s_adc_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create ADC oneshot unit: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    /* Config ADC Channels */
+    adc_oneshot_chan_config_t config = {
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+        .atten = ADC_ATTEN_DB_11,
+    };
+    
+    /* MQ135 */
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_MQ135, &config));
+    /* MQ7 */
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_MQ7, &config));
+    /* MQ2 */
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_MQ2, &config));
+    /* LDR */
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_LDR, &config));
+    /* Water Level */
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_WATER_LEVEL, &config));
+    /* Sound */
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_SOUND, &config));
     
     /* Initialize DHT22 */
     ret = dht22_init(sensor_configs[SENSOR_TYPE_DHT22].gpio);
@@ -109,40 +142,40 @@ esp_err_t sensor_manager_init(void)
         ESP_LOGE(TAG, "Failed to initialize DS18B20: %s", esp_err_to_name(ret));
     }
     
-    /* Initialize MQ-135 */
-    ret = mq135_init(sensor_configs[SENSOR_TYPE_MQ135].adc_channel);
+    /* Initialize MQ135 */
+    ret = mq135_init(s_adc_handle, sensor_configs[SENSOR_TYPE_MQ135].adc_channel);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize MQ-135: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to initialize MQ135: %s", esp_err_to_name(ret));
     }
     
-    /* Initialize MQ-7 */
-    ret = mq7_init(sensor_configs[SENSOR_TYPE_MQ7].adc_channel);
+    /* Initialize MQ7 */
+    ret = mq7_init(s_adc_handle, sensor_configs[SENSOR_TYPE_MQ7].adc_channel);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize MQ-7: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to initialize MQ7: %s", esp_err_to_name(ret));
     }
     
-    /* Initialize MQ-2 */
-    ret = mq2_init(sensor_configs[SENSOR_TYPE_MQ2].adc_channel);
+    /* Initialize MQ2 */
+    ret = mq2_init(s_adc_handle, sensor_configs[SENSOR_TYPE_MQ2].adc_channel);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize MQ-2: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to initialize MQ2: %s", esp_err_to_name(ret));
     }
     
     /* Initialize LDR */
-    ret = ldr_init(sensor_configs[SENSOR_TYPE_LDR].adc_channel);
+    ret = ldr_init(s_adc_handle, sensor_configs[SENSOR_TYPE_LDR].adc_channel);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize LDR: %s", esp_err_to_name(ret));
     }
     
-    /* Initialize water level sensor */
-    ret = water_level_init(sensor_configs[SENSOR_TYPE_WATER_LEVEL].adc_channel);
+    /* Initialize Water Level */
+    ret = water_level_init(s_adc_handle, sensor_configs[SENSOR_TYPE_WATER_LEVEL].adc_channel);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize water level: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to initialize Water Level sensor: %s", esp_err_to_name(ret));
     }
     
-    /* Initialize sound sensor */
-    ret = sound_sensor_init(sensor_configs[SENSOR_TYPE_SOUND].adc_channel);
+    /* Initialize Sound */
+    ret = sound_sensor_init(s_adc_handle, sensor_configs[SENSOR_TYPE_SOUND].adc_channel);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize sound sensor: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to initialize Sound sensor: %s", esp_err_to_name(ret));
     }
     
     ESP_LOGI(TAG, "Sensor initialization complete");

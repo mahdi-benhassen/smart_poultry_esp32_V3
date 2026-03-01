@@ -1,16 +1,13 @@
-/**
- * Water Level Sensor Driver - Implementation
- */
-
 #include <esp_log.h>
 #include <esp_err.h>
-#include <driver/adc.h>
+#include "esp_adc/adc_oneshot.h"
 
 #include "water_level.h"
 
 static const char *TAG = "WATER_LEVEL";
 
-static adc1_channel_t s_adc_channel = ADC_CHANNEL_4;
+static adc_oneshot_unit_handle_t s_adc_handle = NULL;
+static adc_channel_t s_adc_channel = ADC_CHANNEL_4;
 static bool s_initialized = false;
 static uint8_t s_last_level = 0;
 
@@ -23,14 +20,13 @@ static uint8_t s_last_level = 0;
 /**
  * @brief Initialize water level sensor
  */
-esp_err_t water_level_init(adc1_channel_t adc_channel)
+esp_err_t water_level_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel)
 {
-    s_adc_channel = adc_channel;
-    
-    ESP_ERROR_CHECK(adc1_config_channel_atten(adc_channel, ADC_ATTEN_DB_11));
+    s_adc_handle = handle;
+    s_adc_channel = (adc_channel_t)adc_channel;
     
     s_initialized = true;
-    ESP_LOGI(TAG, "Water level sensor initialized on ADC channel %d", adc_channel);
+    ESP_LOGI(TAG, "Water level sensor initialized");
     
     return ESP_OK;
 }
@@ -49,9 +45,11 @@ esp_err_t water_level_read(uint8_t *percent)
     }
     
     /* Read ADC value */
-    uint32_t adc_reading = 0;
+    int adc_raw = 0;
+    int adc_reading = 0;
     for (int i = 0; i < 5; i++) {
-        adc_reading += adc1_get_raw(s_adc_channel);
+        ESP_ERROR_CHECK(adc_oneshot_read(s_adc_handle, s_adc_channel, &adc_raw));
+        adc_reading += adc_raw;
     }
     adc_reading /= 5;
     

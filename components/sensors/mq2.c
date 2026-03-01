@@ -1,12 +1,9 @@
-/**
- * MQ-2 Gas Sensor Driver - Implementation
- */
-
 #include <math.h>
 #include <esp_log.h>
 #include <esp_err.h>
-#include <driver/adc.h>
-#include <esp_adc_cal.h>
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 
 #include "mq2.h"
 
@@ -15,26 +12,35 @@ static const char *TAG = "MQ2";
 /* MQ-2 characteristic curve for LPG */
 static const float MQ2_Curve[3] = {-0.45, 0.36, 0.46};
 
-static adc1_channel_t s_adc_channel = ADC_CHANNEL_6;
+static adc_oneshot_unit_handle_t s_adc_handle = NULL;
+static adc_cali_handle_t s_cali_handle = NULL;
+static adc_channel_t s_adc_channel = ADC_CHANNEL_6;
 static float s_rl = MQ2_RL_VALUE;
 static float s_ro = MQ2_RO_CLEAN_AIR;
 static bool s_initialized = false;
-static esp_adc_cal_characteristics_t s_adc_chars;
 
 /**
  * @brief Initialize MQ-2 sensor
  */
-esp_err_t mq2_init(adc1_channel_t adc_channel)
+esp_err_t mq2_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel)
 {
-    s_adc_channel = adc_channel;
+    s_adc_handle = handle;
+    s_adc_channel = (adc_channel_t)adc_channel;
     
-    ESP_ERROR_CHECK(adc1_config_channel_atten(adc_channel, ADC_ATTEN_DB_11));
+    /* Calibration handle */
+    adc_cali_line_encoding_config_t cali_config = {
+        .unit_id = ADC_UNIT_1,
+        .atten = ADC_ATTEN_DB_11,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
     
-    /* Characterize ADC - use static buffer to avoid memory leak */
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &s_adc_chars);
+    esp_err_t ret = adc_cali_create_scheme_line_fitting(&cali_config, &s_cali_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "ADC calibration not supported: %s", esp_err_to_name(ret));
+    }
     
     s_initialized = true;
-    ESP_LOGI(TAG, "MQ-2 initialized on ADC channel %d", adc_channel);
+    ESP_LOGI(TAG, "MQ-2 initialized");
     
     return ESP_OK;
 }
@@ -53,15 +59,22 @@ esp_err_t mq2_read(float *ppm)
     }
     
     /* Read ADC value */
-    uint32_t adc_reading = 0;
+    int adc_raw = 0;
+    int adc_reading = 0;
     for (int i = 0; i < 10; i++) {
-        adc_reading += adc1_get_raw(s_adc_channel);
+        ESP_ERROR_CHECK(adc_oneshot_read(s_adc_handle, s_adc_channel, &adc_raw));
+        adc_reading += adc_raw;
     }
     adc_reading /= 10;
     
     /* Convert to voltage */
-    uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, &s_adc_chars);
-    float v_voltage = voltage / 1000.0f;
+    int voltage_mv = 0;
+    if (s_cali_handle) {
+        ESP_ERROR_CHECK(adc_cali_raw_to_voltage(s_cali_handle, adc_reading, &voltage_mv));
+    } else {
+        voltage_mv = (adc_reading * 3300) / 4095;
+    }
+    float v_voltage = voltage_mv / 1000.0f;
     
     /* Division by zero protection */
     if (v_voltage < 0.01f) {

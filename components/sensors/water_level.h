@@ -8,11 +8,12 @@
 #include <stdint.h>
 #include <esp_err.h>
 #include <driver/adc.h>
+#include "esp_adc/adc_oneshot.h"
 
 /**
  * @brief Initialize water level sensor
  */
-esp_err_t water_level_init(adc1_channel_t adc_channel);
+esp_err_t water_level_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel);
 
 /**
  * @brief Read water level (0-100%)
