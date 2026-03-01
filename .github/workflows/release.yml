@@ -56,10 +56,10 @@ jobs:
           idf.py --version
         shell: bash
         
-      - name: Install ESP32 component
+      - name: Set ESP32 target
         run: |
           . $HOME/esp/esp-idf/export.sh
-          idf.py add-dependency espressif/esp32
+          idf.py set-target esp32
         shell: bash
         
       - name: Configure project
