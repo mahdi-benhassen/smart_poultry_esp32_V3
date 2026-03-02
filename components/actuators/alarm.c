@@ -8,6 +8,7 @@
 #include <driver/ledc.h>
 
 #include "alarm.h"
+#include "actuator_definitions.h"
 
 static const char *TAG = "ALARM";
 

@@ -6,6 +6,7 @@
 #include <esp_err.h>
 #include <driver/gpio.h>
 
+#include "actuator_definitions.h"
 #include "cooling_pad.h"
 
 static const char *TAG = "COOLING_PAD";

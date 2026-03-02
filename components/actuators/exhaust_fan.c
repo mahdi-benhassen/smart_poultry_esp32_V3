@@ -7,6 +7,7 @@
 #include <driver/gpio.h>
 #include <driver/ledc.h>
 
+#include "actuator_definitions.h"
 #include "exhaust_fan.h"
 
 static const char *TAG = "EXHAUST_FAN";

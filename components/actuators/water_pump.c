@@ -7,6 +7,7 @@
 #include <driver/gpio.h>
 
 #include "water_pump.h"
+#include "actuator_definitions.h"
 
 static const char *TAG = "WATER_PUMP";
 
