@@ -9,6 +9,7 @@
 #include <freertos/task.h>
 
 #include "feeder.h"
+#include "actuator_definitions.h"
 
 static const char *TAG = "FEEDER";
 

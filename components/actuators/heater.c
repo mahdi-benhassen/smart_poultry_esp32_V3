@@ -9,6 +9,8 @@
 
 #include "heater.h"
 
+#include "actuator_definitions.h"
+
 static const char *TAG = "HEATER";
 
 static gpio_num_t s_gpio_pwm = GPIO_HEATER_PWM;

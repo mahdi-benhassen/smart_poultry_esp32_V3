@@ -8,6 +8,8 @@
 
 #include "led_light.h"
 
+#include "actuator_definitions.h"
+
 static const char *TAG = "LED_LIGHT";
 
 static uint8_t s_level = 0;
