@@ -16,7 +16,7 @@
 /**
  * @brief Initialize MQ-2 sensor
  */
-esp_err_t mq2_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel);
+esp_err_t mq2_init(adc_oneshot_unit_handle_t handle, adc_channel_t adc_channel);
 
 /**
  * @brief Read LPG concentration in PPM

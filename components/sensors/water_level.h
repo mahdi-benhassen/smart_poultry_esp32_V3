@@ -12,7 +12,7 @@
 /**
  * @brief Initialize water level sensor
  */
-esp_err_t water_level_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel);
+esp_err_t water_level_init(adc_oneshot_unit_handle_t handle, adc_channel_t adc_channel);
 
 /**
  * @brief Read water level (0-100%)

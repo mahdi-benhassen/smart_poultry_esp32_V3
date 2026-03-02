@@ -12,7 +12,7 @@
 /**
  * @brief Initialize sound sensor
  */
-esp_err_t sound_sensor_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel);
+esp_err_t sound_sensor_init(adc_oneshot_unit_handle_t handle, adc_channel_t adc_channel);
 
 /**
  * @brief Read sound level (0-100%)

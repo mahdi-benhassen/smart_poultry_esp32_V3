@@ -15,10 +15,10 @@ static uint32_t s_sample_count = 0;
 /**
  * @brief Initialize sound sensor
  */
-esp_err_t sound_sensor_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel)
+esp_err_t sound_sensor_init(adc_oneshot_unit_handle_t handle, adc_channel_t adc_channel)
 {
     s_adc_handle = handle;
-    s_adc_channel = (adc_channel_t)adc_channel;
+    s_adc_channel = adc_channel;
     
     s_initialized = true;
     s_average = 0.0f;

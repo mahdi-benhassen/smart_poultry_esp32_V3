@@ -15,10 +15,10 @@ static float s_max_adc = 4095.0f;
 /**
  * @brief Initialize LDR sensor
  */
-esp_err_t ldr_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel)
+esp_err_t ldr_init(adc_oneshot_unit_handle_t handle, adc_channel_t adc_channel)
 {
     s_adc_handle = handle;
-    s_adc_channel = (adc_channel_t)adc_channel;
+    s_adc_channel = adc_channel;
     
     s_initialized = true;
     ESP_LOGI(TAG, "LDR initialized");

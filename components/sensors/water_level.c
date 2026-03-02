@@ -20,10 +20,10 @@ static uint8_t s_last_level = 0;
 /**
  * @brief Initialize water level sensor
  */
-esp_err_t water_level_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel)
+esp_err_t water_level_init(adc_oneshot_unit_handle_t handle, adc_channel_t adc_channel)
 {
     s_adc_handle = handle;
-    s_adc_channel = (adc_channel_t)adc_channel;
+    s_adc_channel = adc_channel;
     
     s_initialized = true;
     ESP_LOGI(TAG, "Water level sensor initialized");

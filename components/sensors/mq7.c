@@ -22,10 +22,10 @@ static bool s_initialized = false;
 /**
  * @brief Initialize MQ-7 sensor
  */
-esp_err_t mq7_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel)
+esp_err_t mq7_init(adc_oneshot_unit_handle_t handle, adc_channel_t adc_channel)
 {
     s_adc_handle = handle;
-    s_adc_channel = (adc_channel_t)adc_channel;
+    s_adc_channel = adc_channel;
     
     /* Calibration handle */
     adc_cali_line_fitting_config_t cali_config = {

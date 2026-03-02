@@ -12,12 +12,12 @@
 #include <hal/adc_types.h>
 
 /* ADC Channels */
-#define ADC_MQ135                ADC1_CHANNEL_0
-#define ADC_MQ7                  ADC1_CHANNEL_3
-#define ADC_MQ2                  ADC1_CHANNEL_6
-#define ADC_LDR                  ADC1_CHANNEL_7
-#define ADC_WATER_LEVEL          ADC1_CHANNEL_4
-#define ADC_SOUND                ADC1_CHANNEL_5
+#define ADC_MQ135                ADC_CHANNEL_0
+#define ADC_MQ7                  ADC_CHANNEL_3
+#define ADC_MQ2                  ADC_CHANNEL_6
+#define ADC_LDR                  ADC_CHANNEL_7
+#define ADC_WATER_LEVEL          ADC_CHANNEL_4
+#define ADC_SOUND                ADC_CHANNEL_5
 
 /* GPIO Pin Definitions for Sensors */
 #define GPIO_DHT22               4
