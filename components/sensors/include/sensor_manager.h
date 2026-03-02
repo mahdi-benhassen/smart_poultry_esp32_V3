@@ -6,9 +6,28 @@
 #define SENSOR_MANAGER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <esp_err.h>
 #include <driver/gpio.h>
-#include <driver/adc.h>
+#include <hal/adc_types.h>
+
+/* ADC Channels */
+#define ADC_MQ135                ADC1_CHANNEL_0
+#define ADC_MQ7                  ADC1_CHANNEL_3
+#define ADC_MQ2                  ADC1_CHANNEL_6
+#define ADC_LDR                  ADC1_CHANNEL_7
+#define ADC_WATER_LEVEL          ADC1_CHANNEL_4
+#define ADC_SOUND                ADC1_CHANNEL_5
+
+/* GPIO Pin Definitions for Sensors */
+#define GPIO_DHT22               4
+#define GPIO_DS18B20             5
+#define GPIO_MQ135               36
+#define GPIO_MQ7                 39
+#define GPIO_MQ2                 34
+#define GPIO_LDR                 35
+#define GPIO_WATER_LEVEL         32
+#define GPIO_SOUND               33
 
 /* Sensor types */
 typedef enum {
@@ -23,6 +42,23 @@ typedef enum {
     SENSOR_TYPE_MAX
 } sensor_type_t;
 
+/* Sensor Data Structure */
+typedef struct {
+    float temperature;
+    float humidity;
+    float temperature_ds18b20;
+    float water_temperature;
+    float ammonia_ppm;
+    float co_ppm;
+    float co2_ppm;
+    float h2s_ppm;
+    float lpg_ppm;
+    float light_percent;
+    uint8_t water_level;
+    float sound_level;
+    uint32_t timestamp;
+} sensor_data_t;
+
 /* Sensor reading */
 typedef struct {
     sensor_type_t type;
@@ -34,7 +70,7 @@ typedef struct {
 /* Sensor configuration */
 typedef struct {
     gpio_num_t gpio;
-    adc1_channel_t adc_channel;
+    adc_channel_t adc_channel;
     float calibration_offset;
     float calibration_scale;
     bool enabled;

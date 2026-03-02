@@ -28,7 +28,7 @@ esp_err_t mq2_init(adc_oneshot_unit_handle_t handle, adc1_channel_t adc_channel)
     s_adc_channel = (adc_channel_t)adc_channel;
     
     /* Calibration handle */
-    adc_cali_line_encoding_config_t cali_config = {
+    adc_cali_line_fitting_config_t cali_config = {
         .unit_id = ADC_UNIT_1,
         .atten = ADC_ATTEN_DB_11,
         .bitwidth = ADC_BITWIDTH_DEFAULT,

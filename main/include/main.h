@@ -10,14 +10,10 @@
 #include <stdbool.h>
 #include <esp_err.h>
 
+#include "sensor_manager.h"
+
 /* Version */
 #define SMART_POULTRY_VERSION "1.1.0"
-
-/* Flock Types */
-typedef enum {
-    FLOCK_TYPE_BROILER,    /* Broiler chickens */
-    FLOCK_TYPE_LAYER       /* Layer hens */
-} flock_type_t;
 
 /* System State */
 typedef struct {
@@ -38,22 +34,11 @@ typedef struct {
 /* Global system state */
 extern system_state_t g_system_state;
 
-/* Sensor Data */
-typedef struct {
-    float temperature;
-    float humidity;
-    float temperature_ds18b20;
-    float water_temperature;      /* Water temperature monitoring */
-    float ammonia_ppm;
-    float co_ppm;
-    float co2_ppm;
-    float h2s_ppm;                /* Hydrogen sulfide sensor */
-    float lpg_ppm;
-    float light_percent;
-    uint8_t water_level;
-    float sound_level;
-    uint32_t timestamp;
-} sensor_data_t;
+/* Flock Types */
+typedef enum {
+    FLOCK_TYPE_BROILER,    /* Broiler chickens */
+    FLOCK_TYPE_LAYER       /* Layer hens */
+} flock_type_t;
 
 /* Actuator State */
 typedef struct {
@@ -217,15 +202,8 @@ typedef struct {
 #define DEFAULT_MQTT_BROKER      "mqtt://localhost"
 #define DEFAULT_MQTT_PORT        1883
 
-/* GPIO Pin Definitions */
-#define GPIO_DHT22               4
-#define GPIO_DS18B20             5
-#define GPIO_MQ135               36      /* ADC1_CH0 */
-#define GPIO_MQ7                 39      /* ADC1_CH3 */
-#define GPIO_MQ2                 34      /* ADC1_CH6 */
-#define GPIO_LDR                 35      /* ADC1_CH7 */
-#define GPIO_WATER_LEVEL         32      /* ADC1_CH4 */
-#define GPIO_SOUND               33      /* ADC1_CH5 */
+/* PWM Configuration */
+#define PWM_FREQ                 1000    /* 1 kHz */
 
 #define GPIO_FAN1_PWM            12
 #define GPIO_FAN1_EN             13
@@ -243,14 +221,6 @@ typedef struct {
 /* PWM Configuration */
 #define PWM_FREQ                 1000    /* 1 kHz */
 #define PWM_RESOLUTION           10      /* 10-bit */
-
-/* ADC Channels */
-#define ADC_MQ135                ADC1_CHANNEL_0
-#define ADC_MQ7                  ADC1_CHANNEL_3
-#define ADC_MQ2                  ADC1_CHANNEL_6
-#define ADC_LDR                  ADC1_CHANNEL_7
-#define ADC_WATER_LEVEL          ADC1_CHANNEL_4
-#define ADC_SOUND                ADC1_CHANNEL_5
 
 /* Number of sensors/actuators */
 #define MAX_DS18B20_SENSORS      4

@@ -101,9 +101,8 @@ esp_err_t sensor_manager_init(void)
     ESP_LOGI(TAG, "Initializing sensors...");
     
     /* Initialize ADC Oneshot Unit */
-    adc_oneshot_unit_init_config_t init_config = {
+    adc_oneshot_unit_init_cfg_t init_config = {
         .unit_id = ADC_UNIT_1,
-        .ulp_mode = ADC_ULP_MODE_DISABLE,
     };
     ret = adc_oneshot_new_unit(&init_config, &s_adc_handle);
     if (ret != ESP_OK) {
@@ -112,7 +111,7 @@ esp_err_t sensor_manager_init(void)
     }
     
     /* Config ADC Channels */
-    adc_oneshot_chan_config_t config = {
+    adc_oneshot_chan_cfg_t config = {
         .bitwidth = ADC_BITWIDTH_DEFAULT,
         .atten = ADC_ATTEN_DB_11,
     };
@@ -190,7 +189,6 @@ esp_err_t sensor_manager_read_all(void *data)
 {
     sensor_data_t *sensor_data = (sensor_data_t *)data;
     esp_err_t ret;
-    float value;
     uint32_t timestamp = esp_log_timestamp();
     
     /* Initialize with default values */

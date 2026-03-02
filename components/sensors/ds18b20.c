@@ -8,6 +8,7 @@
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <esp_rom_sys.h>
 
 #include "ds18b20.h"
 
@@ -16,13 +17,11 @@ static const char *TAG = "DS18B20";
 #define DS18B20_TIMEOUT_US      250
 #define MAX_DEVICES             4
 
-static gpio_num_t s_gpio = GPIO_DS18B20;
+static gpio_num_t s_gpio = GPIO_NUM_NC;
 static bool s_initialized = false;
 static ds18b20_device_t s_devices[MAX_DEVICES];
 static uint8_t s_device_count = 0;
 
-/* OneWire functions */
-static void onewire_init(gpio_num_t gpio);
 static void onewire_write_bit(gpio_num_t gpio, uint8_t bit);
 static uint8_t onewire_read_bit(gpio_num_t gpio);
 static void onewire_write_byte(gpio_num_t gpio, uint8_t byte);
@@ -99,9 +98,9 @@ esp_err_t ds18b20_read_device(const uint8_t *rom, float *temperature)
     /* Send reset */
     gpio_set_direction(s_gpio, GPIO_MODE_OUTPUT_OD);
     gpio_set_level(s_gpio, 0);
-    ets_delay_us(480);
+    esp_rom_delay_us(480);
     gpio_set_level(s_gpio, 1);
-    ets_delay_us(480);
+    esp_rom_delay_us(480);
     
     /* Match ROM */
     onewire_write_byte(s_gpio, DS18B20_CMD_MATCH_ROM);
@@ -150,9 +149,9 @@ esp_err_t ds18b20_set_resolution(const uint8_t *rom, ds18b20_resolution_t resolu
     /* Reset */
     gpio_set_direction(s_gpio, GPIO_MODE_OUTPUT_OD);
     gpio_set_level(s_gpio, 0);
-    ets_delay_us(480);
+    esp_rom_delay_us(480);
     gpio_set_level(s_gpio, 1);
-    ets_delay_us(480);
+    esp_rom_delay_us(480);
     
     /* Match ROM and write scratchpad */
     onewire_write_byte(s_gpio, DS18B20_CMD_MATCH_ROM);
@@ -175,9 +174,9 @@ esp_err_t ds18b20_start_conversion(void)
     /* Reset */
     gpio_set_direction(s_gpio, GPIO_MODE_OUTPUT_OD);
     gpio_set_level(s_gpio, 0);
-    ets_delay_us(480);
+    esp_rom_delay_us(480);
     gpio_set_level(s_gpio, 1);
-    ets_delay_us(480);
+    esp_rom_delay_us(480);
     
     /* Skip ROM and start conversion */
     onewire_write_byte(s_gpio, DS18B20_CMD_SKIP_ROM);
@@ -190,24 +189,19 @@ esp_err_t ds18b20_start_conversion(void)
 }
 
 /* OneWire helper functions */
-static void onewire_init(gpio_num_t gpio)
-{
-    gpio_set_direction(gpio, GPIO_MODE_INPUT);
-}
-
 static void onewire_write_bit(gpio_num_t gpio, uint8_t bit)
 {
     gpio_set_direction(gpio, GPIO_MODE_OUTPUT_OD);
     gpio_set_level(gpio, 0);
     
     if (bit) {
-        ets_delay_us(10);
+        esp_rom_delay_us(10);
         gpio_set_level(gpio, 1);
-        ets_delay_us(55);
+        esp_rom_delay_us(55);
     } else {
-        ets_delay_us(65);
+        esp_rom_delay_us(65);
         gpio_set_level(gpio, 1);
-        ets_delay_us(5);
+        esp_rom_delay_us(5);
     }
 }
 
@@ -215,13 +209,13 @@ static uint8_t onewire_read_bit(gpio_num_t gpio)
 {
     gpio_set_direction(gpio, GPIO_MODE_OUTPUT_OD);
     gpio_set_level(gpio, 0);
-    ets_delay_us(2);
+    esp_rom_delay_us(2);
     gpio_set_level(gpio, 1);
     gpio_set_direction(gpio, GPIO_MODE_INPUT);
-    ets_delay_us(10);
+    esp_rom_delay_us(10);
     
     uint8_t bit = gpio_get_level(gpio);
-    ets_delay_us(50);
+    esp_rom_delay_us(50);
     
     return bit;
 }
@@ -266,21 +260,20 @@ static int onewire_search(gpio_num_t gpio, uint8_t *rom_codes, uint8_t max_devic
 {
     int found = 0;
     uint8_t diff, rom[8];
+    int i = 0;
     
     for (diff = DS18B20_CMD_SEARCH_ROM; diff != 0; ) {
-        uint8_t cmd = DS18B20_CMD_SEARCH_ROM;
-        
         /* Reset */
         gpio_set_direction(gpio, GPIO_MODE_OUTPUT_OD);
         gpio_set_level(gpio, 0);
-        ets_delay_us(480);
+        esp_rom_delay_us(480);
         gpio_set_level(gpio, 1);
-        ets_delay_us(480);
+        esp_rom_delay_us(480);
         
         /* Search ROM */
         uint8_t last_zero = 0;
         
-        for (int i = 0; i < 64; i++) {
+        for (i = 0; i < 64; i++) {
             int id_bit = onewire_read_bit(gpio);
             int cmp_id_bit = onewire_read_bit(gpio);
             
