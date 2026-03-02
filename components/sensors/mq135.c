@@ -5,6 +5,8 @@
 #include <math.h>
 #include <esp_log.h>
 #include <esp_err.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
@@ -15,7 +17,7 @@ static const char *TAG = "MQ135";
 
 /* MQ-135 characteristic curve parameters */
 static const float MQ135_Curve[3] = {3.8912, -0.4704, 0.4176};  /* For NH3 */
-static const float MQ135_Curve_CO2[3] = {4.4887, -0.6468, 0.6328};  /* For CO2 */
+/* static const float MQ135_Curve_CO2[3] = {4.4887, -0.6468, 0.6328}; */ /* For CO2 - Unused */
 
 /* Global state */
 static adc_oneshot_unit_handle_t s_adc_handle = NULL;

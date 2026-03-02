@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 #include <esp_err.h>
-#include <driver/adc.h>
 #include "esp_adc/adc_oneshot.h"
 
 /**

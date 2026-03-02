@@ -8,6 +8,8 @@
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <esp_timer.h>
+#include <inttypes.h>
 
 #include "dht22.h"
 
@@ -19,7 +21,7 @@ static const char *TAG = "DHT22";
 #define DHT22_BIT_COUNT          40
 
 /* Global state */
-static gpio_num_t s_gpio = GPIO_DHT22;
+static gpio_num_t s_gpio = GPIO_NUM_NC;
 static bool s_initialized = false;
 static uint32_t s_interval_ms = 2000;  /* Default 2 second interval */
 static uint32_t s_last_read_time = 0;
@@ -169,6 +171,6 @@ esp_err_t dht22_set_interval(uint32_t interval_ms)
     } else {
         s_interval_ms = interval_ms;
     }
-    ESP_LOGI(TAG, "DHT22 read interval set to %ums", s_interval_ms);
+    ESP_LOGI(TAG, "DHT22 read interval set to %" PRIu32 "ms", s_interval_ms);
     return ESP_OK;
 }
