@@ -6,7 +6,7 @@
 #include <esp_log.h>
 #include <esp_err.h>
 #include <freertos/FreeRTOS.h>
-#include <freertos/mutex.h>
+#include <freertos/semphr.h>
 
 #include "control_manager.h"
 #include "pid_controller.h"

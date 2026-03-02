@@ -10,8 +10,6 @@
 #include <stdbool.h>
 #include "../../main/include/main.h"
 
-typedef struct sensor_data sensor_data_t;
-
 /* Decision output */
 typedef struct {
     uint8_t fan1_speed;

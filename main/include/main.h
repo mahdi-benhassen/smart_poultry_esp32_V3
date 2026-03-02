@@ -15,6 +15,12 @@
 /* Version */
 #define SMART_POULTRY_VERSION "1.1.0"
 
+/* Flock Types */
+typedef enum {
+    FLOCK_TYPE_BROILER,    /* Broiler chickens */
+    FLOCK_TYPE_LAYER       /* Layer hens */
+} flock_type_t;
+
 /* System State */
 typedef struct {
     bool initialized;
@@ -33,12 +39,6 @@ typedef struct {
 
 /* Global system state */
 extern system_state_t g_system_state;
-
-/* Flock Types */
-typedef enum {
-    FLOCK_TYPE_BROILER,    /* Broiler chickens */
-    FLOCK_TYPE_LAYER       /* Layer hens */
-} flock_type_t;
 
 /* Actuator State */
 typedef struct {
