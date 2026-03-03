@@ -3,7 +3,7 @@
  */
 
 #include <esp_log.h>
-#include "esp_ota_ops.h"
+#include "esp_ota.h"
 
 static const char *TAG = "OTA_UPDATE";
 
