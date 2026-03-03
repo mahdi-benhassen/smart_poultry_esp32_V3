@@ -317,3 +317,227 @@ bool decision_algorithm_check_water_alert(float current_consumption)
     g_system_state.previous_water_consumption = current_consumption;
     return false;
 }
+
+/* ============================================================================
+ * NEW SENSOR CONTROL LOGIC (Smart Poultry V3)
+ * ============================================================================ */
+
+/**
+ * @brief Evaluate pressure-based ventilation control
+ * @note Sudden pressure drops indicate incoming storms
+ */
+void decision_algorithm_evaluate_pressure(const sensor_data_t *data, decision_output_t *output)
+{
+    static float s_last_pressure = 0;
+    static bool s_first_read = true;
+    
+    if (data->pressure_hpa <= 0) {
+        return;  /* Invalid reading */
+    }
+    
+    /* Check for sudden pressure drop (storm warning) */
+    if (!s_first_read && s_last_pressure > 0) {
+        float pressure_diff = s_last_pressure - data->pressure_hpa;
+        
+        if (pressure_diff > PRESSURE_DIFF_WARNING) {
+            ESP_LOGW(TAG, "STORM WARNING: Pressure dropped by %.1fhPa in last reading!", 
+                     pressure_diff);
+            /* Increase ventilation to prepare for temperature changes */
+            output->fan1_speed = 80;
+            output->fan2_speed = 80;
+        }
+        
+        /* Low pressure (rain warning) */
+        if (data->pressure_hpa < PRESSURE_LOW) {
+            ESP_LOGD(TAG, "Low pressure warning: %.1fhPa - rain expected", 
+                     data->pressure_hpa);
+        }
+    }
+    
+    s_last_pressure = data->pressure_hpa;
+    s_first_read = false;
+}
+
+/**
+ * @brief Evaluate particulate matter control
+ * @note High PM levels are critical for poultry respiratory health
+ */
+void decision_algorithm_evaluate_particulate(const sensor_data_t *data, decision_output_t *output)
+{
+    /* PM2.5 control */
+    if (data->pm2_5_atm > PM25_UNHEALTHY) {
+        /* Critical - maximum ventilation */
+        output->fan1_speed = 100;
+        output->fan2_speed = 100;
+        ESP_LOGW(TAG, "CRITICAL PM2.5: %d μg/m³ - max ventilation!", 
+                 data->pm2_5_atm);
+    } else if (data->pm2_5_atm > PM25_UNHEALTHY_SENS) {
+        /* High - increased ventilation */
+        output->fan1_speed = 90;
+        output->fan2_speed = 90;
+        ESP_LOGW(TAG, "High PM2.5: %d μg/m³ - increased ventilation", 
+                 data->pm2_5_atm);
+    } else if (data->pm2_5_atm > PM25_MODERATE) {
+        /* Moderate - slight increase */
+        output->fan1_speed = 60;
+        output->fan2_speed = 60;
+        ESP_LOGD(TAG, "Moderate PM2.5: %d μg/m³", data->pm2_5_atm);
+    }
+    
+    /* PM10 control */
+    if (data->pm10_atm > PM10_UNHEALTHY) {
+        output->fan1_speed = 100;
+        output->fan2_speed = 100;
+        ESP_LOGW(TAG, "CRITICAL PM10: %d μg/m³", data->pm10_atm);
+    } else if (data->pm10_atm > PM10_UNHEALTHY_SENS) {
+        output->fan1_speed = 80;
+        output->fan2_speed = 80;
+        ESP_LOGW(TAG, "High PM10: %d μg/m³", data->pm10_atm);
+    }
+}
+
+/**
+ * @brief Evaluate TVOC control
+ * @note High TVOC indicates poor air quality
+ */
+void decision_algorithm_evaluate_tvoc(const sensor_data_t *data, decision_output_t *output)
+{
+    if (data->tvoc_ppb > TVOC_UNHEALTHY) {
+        output->fan1_speed = 90;
+        output->fan2_speed = 90;
+        ESP_LOGW(TAG, "CRITICAL TVOC: %.0f ppb - max ventilation!", 
+                 data->tvoc_ppb);
+    } else if (data->tvoc_ppb > TVOC_MODERATE) {
+        output->fan1_speed = 70;
+        output->fan2_speed = 70;
+        ESP_LOGD(TAG, "Elevated TVOC: %.0f ppb", data->tvoc_ppb);
+    }
+}
+
+/**
+ * @brief Evaluate AQI-based control
+ * @note AQI combines multiple air quality factors
+ */
+void decision_algorithm_evaluate_aqi(const sensor_data_t *data, decision_output_t *output)
+{
+    switch (data->aqi_level) {
+        case AQI_VERY_UNHEALTHY:
+        case AQI_HAZARDOUS:
+            output->fan1_speed = 100;
+            output->fan2_speed = 100;
+            ESP_LOGW(TAG, "AQI CRITICAL: Level %d - EMERGENCY VENTILATION", 
+                     data->aqi_level);
+            break;
+            
+        case AQI_UNHEALTHY:
+            output->fan1_speed = 90;
+            output->fan2_speed = 90;
+            ESP_LOGW(TAG, "AQI Unhealthy: Level %d", data->aqi_level);
+            break;
+            
+        case AQI_UNHEALTHY_SENSITIVE:
+            output->fan1_speed = 70;
+            output->fan2_speed = 70;
+            ESP_LOGD(TAG, "AQI Unhealthy for Sensitive: Level %d", data->aqi_level);
+            break;
+            
+        case AQI_MODERATE:
+            output->fan1_speed = 50;
+            output->fan2_speed = 50;
+            ESP_LOGD(TAG, "AQI Moderate: Level %d", data->aqi_level);
+            break;
+            
+        case AQI_GOOD:
+        default:
+            /* Normal ventilation */
+            break;
+    }
+}
+
+/**
+ * @brief Check weight for growth monitoring
+ * @note Returns true if weight is significantly below target
+ */
+bool decision_algorithm_check_weight_alert(const sensor_data_t *data)
+{
+    flock_type_t flock_type = g_system_state.flock_type;
+    uint16_t flock_age = g_system_state.flock_age_days;
+    
+    if (data->weight_g <= 0) {
+        return false;
+    }
+    
+    float target_weight = 0;
+    
+    if (flock_type == FLOCK_TYPE_BROILER) {
+        /* Get target weight based on age */
+        if (flock_age <= 7) {
+            target_weight = WEIGHT_TARGET_BROILER_7D * 0.8f;  /* Adjust for actual day */
+        } else if (flock_age <= 14) {
+            target_weight = WEIGHT_TARGET_BROILER_14D * ((float)flock_age / 14.0f);
+        } else if (flock_age <= 21) {
+            target_weight = WEIGHT_TARGET_BROILER_21D * ((float)flock_age / 21.0f);
+        } else {
+            target_weight = WEIGHT_TARGET_BROILER_35D * ((float)flock_age / 35.0f);
+        }
+    } else {
+        /* Layers */
+        target_weight = WEIGHT_LAYER_MIN;
+    }
+    
+    if (target_weight > 0) {
+        float deviation = ((target_weight - data->weight_g) / target_weight) * 100.0f;
+        
+        if (deviation > WEIGHT_DROP_ALERT) {
+            ESP_LOGW(TAG, "Weight alert: Current %.1fg, Target %.1fg (deviation: %.1f%%)",
+                     data->weight_g, target_weight, deviation);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * @brief Check energy consumption alert
+ * @note Alerts if power consumption is abnormal
+ */
+bool decision_algorithm_check_energy_alert(const sensor_data_t *data)
+{
+    static float s_daily_energy = 0;
+    static uint32_t s_last_day = 0;
+    
+    uint32_t now = esp_log_timestamp() / 1000;
+    uint32_t current_day = now / 86400;
+    
+    /* Reset daily counter at midnight */
+    if (current_day != s_last_day) {
+        s_daily_energy = 0;
+        s_last_day = current_day;
+    }
+    
+    /* Add current power reading */
+    if (data->power_watts > 0) {
+        /* Power is in watts, add proportionally for 5-second cycle */
+        s_daily_energy += data->power_watts * (5.0f / 3600.0f);
+    }
+    
+    /* Check if daily limit exceeded */
+    if (s_daily_energy > POWER_MAX_DAILY) {
+        ESP_LOGW(TAG, "Daily energy limit exceeded: %.0f Wh > %.0f Wh",
+                 s_daily_energy, POWER_MAX_DAILY);
+        return true;
+    }
+    
+    /* Check for high instantaneous power */
+    if (data->current_amps > CURRENT_MAX_TOTAL) {
+        ESP_LOGW(TAG, "High current detected: %.1fA > %.1fA",
+                 data->current_amps, CURRENT_MAX_TOTAL);
+        return true;
+    }
+    
+    ESP_LOGD(TAG, "Energy: %.1fW, Daily: %.0fWh / %.0fWh", 
+             data->power_watts, s_daily_energy, POWER_MAX_DAILY);
+    
+    return false;
+}

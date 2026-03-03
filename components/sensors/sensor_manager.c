@@ -1,11 +1,14 @@
 /**
  * Sensor Manager - Implementation
+ * Smart Poultry V3 - Extended Sensor Support
  */
 
 #include <string.h>
 #include <esp_log.h>
 #include <esp_err.h>
 #include <driver/gpio.h>
+#include <driver/i2c.h>
+#include <driver/uart.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "esp_adc/adc_oneshot.h"
@@ -21,11 +24,19 @@
 #include "ldr.h"
 #include "water_level.h"
 #include "sound_sensor.h"
+#include "bmp280.h"
+#include "sgp30.h"
+#include "pms5003.h"
+#include "hx711.h"
+#include "acs712.h"
 
 static const char *TAG = "SENSOR_MGR";
 
 /* ADC Handle */
 static adc_oneshot_unit_handle_t s_adc_handle = NULL;
+
+/* I2C handle */
+static bool s_i2c_initialized = false;
 
 /* Sensor configurations */
 static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
@@ -82,6 +93,37 @@ static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
         .calibration_offset = 0.0f,
         .calibration_scale = 1.0f,
         .enabled = true
+    },
+    [SENSOR_TYPE_BMP280] = {
+        .gpio = GPIO_NUM_NC,
+        .calibration_offset = 0.0f,
+        .calibration_scale = 1.0f,
+        .enabled = true
+    },
+    [SENSOR_TYPE_SGP30] = {
+        .gpio = GPIO_NUM_NC,
+        .calibration_offset = 0.0f,
+        .calibration_scale = 1.0f,
+        .enabled = true
+    },
+    [SENSOR_TYPE_PMS5003] = {
+        .gpio = GPIO_NUM_NC,
+        .calibration_offset = 0.0f,
+        .calibration_scale = 1.0f,
+        .enabled = true
+    },
+    [SENSOR_TYPE_HX711] = {
+        .gpio = GPIO_HX711_DOUT,
+        .calibration_offset = 0.0f,
+        .calibration_scale = 1.0f,
+        .enabled = true
+    },
+    [SENSOR_TYPE_ACS712] = {
+        .gpio = GPIO_NUM_NC,
+        .adc_channel = ADC_ACS712,
+        .calibration_offset = 0.0f,
+        .calibration_scale = 1.0f,
+        .enabled = true
     }
 };
 
@@ -91,13 +133,59 @@ static uint32_t last_timestamps[SENSOR_TYPE_MAX] = {0};
 static bool readings_valid[SENSOR_TYPE_MAX] = {false};
 
 /**
+ * @brief Initialize I2C for BMP280 and SGP30
+ */
+esp_err_t sensor_manager_init_i2c_sensors(void)
+{
+    if (s_i2c_initialized) {
+        return ESP_OK;
+    }
+    
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = I2C_SENSOR_SDA,
+        .scl_io_num = I2C_SENSOR_SCL,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = 100000,
+    };
+    
+    esp_err_t ret = i2c_param_config(SENSORS_I2C_NUM, &conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure I2C");
+        return ret;
+    }
+    
+    ret = i2c_driver_install(SENSORS_I2C_NUM, I2C_MODE_MASTER, 0, 0, 0);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to install I2C driver");
+        return ret;
+    }
+    
+    s_i2c_initialized = true;
+    ESP_LOGI(TAG, "I2C initialized for sensors");
+    
+    return ESP_OK;
+}
+
+/**
+ * @brief Initialize UART for PMS5003
+ */
+esp_err_t sensor_manager_init_uart_sensors(void)
+{
+    ESP_LOGI(TAG, "PMS5003 UART config: UART%d TX=%d RX=%d", 
+             PMS5003_UART_NUM, PMS5003_TX_PIN, PMS5003_RX_PIN);
+    return ESP_OK;
+}
+
+/**
  * @brief Initialize all sensors
  */
 esp_err_t sensor_manager_init(void)
 {
     esp_err_t ret = ESP_OK;
     
-    ESP_LOGI(TAG, "Initializing sensors...");
+    ESP_LOGI(TAG, "Initializing sensors (Smart Poultry V3 Extended)...");
     
     /* Initialize ADC Oneshot Unit */
     adc_oneshot_unit_init_cfg_t init_config = {
@@ -176,9 +264,99 @@ esp_err_t sensor_manager_init(void)
         ESP_LOGE(TAG, "Failed to initialize Sound sensor: %s", esp_err_to_name(ret));
     }
     
-    ESP_LOGI(TAG, "Sensor initialization complete");
+    /* Initialize I2C sensors */
+    ret = sensor_manager_init_i2c_sensors();
+    if (ret == ESP_OK) {
+        /* Initialize BMP280 */
+        ret = bmp280_init(SENSORS_I2C_NUM, BMP280_ADDR);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize BMP280: %s", esp_err_to_name(ret));
+        }
+        
+        /* Initialize SGP30 */
+        ret = sgp30_init(SENSORS_I2C_NUM);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize SGP30: %s", esp_err_to_name(ret));
+        }
+    }
+    
+    /* Initialize UART sensors */
+    sensor_manager_init_uart_sensors();
+    ret = pms5003_init(PMS5003_UART_NUM, PMS5003_TX_PIN, PMS5003_RX_PIN);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize PMS5003: %s", esp_err_to_name(ret));
+    }
+    
+    /* Initialize HX711 weight sensor */
+    ret = hx711_init(GPIO_HX711_DOUT, GPIO_HX711_SCK);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize HX711: %s", esp_err_to_name(ret));
+    } else {
+        /* Tare the scale on startup */
+        hx711_tare(10);
+    }
+    
+    /* Initialize ACS712 current sensor */
+    ret = acs712_init(ACS712_20A, ADC_ACS712);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize ACS712: %s", esp_err_to_name(ret));
+    }
+    
+    ESP_LOGI(TAG, "Sensor initialization complete (Extended V3)");
     
     return ESP_OK;
+}
+
+/**
+ * @brief Calculate Air Quality Index
+ */
+aqi_level_t sensor_manager_calculate_aqi(const sensor_data_t *data)
+{
+    if (data == NULL) {
+        return AQI_GOOD;
+    }
+    
+    /* Calculate AQI based on multiple factors */
+    float aqi = 0.0f;
+    
+    /* PM2.5 contribution (0-100 scale, critical for respiratory health) */
+    if (data->pm2_5_atm > 0) {
+        if (data->pm2_5_atm <= 35) {
+            aqi += (data->pm2_5_atm / 35.0f) * 25;
+        } else if (data->pm2_5_atm <= 55) {
+            aqi += 25 + ((data->pm2_5_atm - 35) / 20.0f) * 25;
+        } else if (data->pm2_5_atm <= 150) {
+            aqi += 50 + ((data->pm2_5_atm - 55) / 95.0f) * 50;
+        } else {
+            aqi += 100 + ((data->pm2_5_atm - 150) / 850.0f) * 100;
+        }
+    }
+    
+    /* CO2 contribution */
+    if (data->co2_ppm > 1000) {
+        aqi += ((data->co2_ppm - 1000) / 4000.0f) * 30;
+    }
+    
+    /* Ammonia contribution */
+    if (data->ammonia_ppm > 10) {
+        aqi += ((data->ammonia_ppm - 10) / 40.0f) * 40;
+    }
+    
+    /* TVOC contribution */
+    if (data->tvoc_ppb > 200) {
+        aqi += ((data->tvoc_ppb - 200) / 5800.0f) * 30;
+    }
+    
+    /* Cap at 500 */
+    if (aqi > 500) aqi = 500;
+    
+    /* Determine AQI level */
+    if (aqi <= 50) return AQI_GOOD;
+    else if (aqi <= 100) return AQI_MODERATE;
+    else if (aqi <= 150) return AQI_UNHEALTHY_SENSITIVE;
+    else if (aqi <= 200) return AQI_UNHEALTHY;
+    else if (aqi <= 300) return AQI_VERY_UNHEALTHY;
+    else return AQI_HAZARDOUS;
 }
 
 /**
@@ -212,11 +390,20 @@ esp_err_t sensor_manager_read_all(void *data)
     
     /* Temperature selection: prefer DHT22 if valid, otherwise use DS18B20 */
     if (readings_valid[SENSOR_TYPE_DHT22]) {
-        /* DHT22 is valid, use it as primary temperature */
         sensor_data->temperature = sensor_data->temperature;
     } else if (readings_valid[SENSOR_TYPE_DS18B20]) {
-        /* DHT22 not valid, use DS18B20 as fallback */
         sensor_data->temperature = sensor_data->temperature_ds18b20;
+    }
+    
+    /* Read BMP280 - Barometric Pressure */
+    ret = bmp280_read(&sensor_data->temperature, &sensor_data->pressure_hpa);
+    if (ret == ESP_OK) {
+        /* Use BMP280 temperature as additional reference */
+        last_readings[SENSOR_TYPE_BMP280] = sensor_data->pressure_hpa;
+        readings_valid[SENSOR_TYPE_BMP280] = true;
+        
+        /* Calculate altitude if sea level pressure known */
+        bmp280_read_altitude(1013.25f, &sensor_data->altitude_m);
     }
     
     /* Read gas sensors */
@@ -239,6 +426,25 @@ esp_err_t sensor_manager_read_all(void *data)
         last_readings[SENSOR_TYPE_MQ2] = sensor_data->lpg_ppm;
         last_timestamps[SENSOR_TYPE_MQ2] = timestamp;
         readings_valid[SENSOR_TYPE_MQ2] = true;
+    }
+    
+    /* Read SGP30 - CO2 and TVOC */
+    uint16_t co2_ppm, tvoc_ppb;
+    ret = sgp30_read(&co2_ppm, &tvoc_ppb);
+    if (ret == ESP_OK) {
+        sensor_data->co2_ppm = (float)co2_ppm;
+        sensor_data->tvoc_ppb = (float)tvoc_ppb;
+        readings_valid[SENSOR_TYPE_SGP30] = true;
+    }
+    
+    /* Read PMS5003 - Particulate Matter */
+    pms5003_data_t pm_data;
+    ret = pms5003_read(&pm_data);
+    if (ret == ESP_OK) {
+        sensor_data->pm1_0_atm = pm_data.pm1_0_atm;
+        sensor_data->pm2_5_atm = pm_data.pm2_5_atm;
+        sensor_data->pm10_atm = pm_data.pm10_atm;
+        readings_valid[SENSOR_TYPE_PMS5003] = true;
     }
     
     /* Read light level */
@@ -264,6 +470,27 @@ esp_err_t sensor_manager_read_all(void *data)
         last_timestamps[SENSOR_TYPE_SOUND] = timestamp;
         readings_valid[SENSOR_TYPE_SOUND] = true;
     }
+    
+    /* Read HX711 - Weight */
+    ret = hx711_read_weight(&sensor_data->weight_g);
+    if (ret == ESP_OK) {
+        readings_valid[SENSOR_TYPE_HX711] = true;
+    }
+    
+    /* Read ACS712 - Current/Power */
+    ret = acs712_read_current(&sensor_data->current_amps);
+    if (ret == ESP_OK) {
+        sensor_data->power_watts = sensor_data->current_amps * 220.0f;
+        
+        /* Update energy counter */
+        acs712_update_energy();
+        sensor_data->energy_wh = acs712_get_energy_wh();
+        
+        readings_valid[SENSOR_TYPE_ACS712] = true;
+    }
+    
+    /* Calculate AQI */
+    sensor_data->aqi_level = sensor_manager_calculate_aqi(sensor_data);
     
     return ESP_OK;
 }
@@ -306,6 +533,24 @@ esp_err_t sensor_manager_read(sensor_type_t type, float *value)
         case SENSOR_TYPE_SOUND:
             ret = sound_sensor_read(value);
             break;
+        case SENSOR_TYPE_BMP280:
+            ret = bmp280_read_pressure(value);
+            break;
+        case SENSOR_TYPE_SGP30: {
+            uint16_t co2, tvoc;
+            ret = sgp30_read(&co2, &tvoc);
+            *value = (float)co2;
+            break;
+        }
+        case SENSOR_TYPE_PMS5003:
+            ret = pms5003_read_pm25((uint16_t *)value);
+            break;
+        case SENSOR_TYPE_HX711:
+            ret = hx711_read_weight(value);
+            break;
+        case SENSOR_TYPE_ACS712:
+            ret = acs712_read_current(value);
+            break;
         default:
             return ESP_ERR_NOT_FOUND;
     }
@@ -317,6 +562,122 @@ esp_err_t sensor_manager_read(sensor_type_t type, float *value)
     }
     
     return ret;
+}
+
+/**
+ * @brief Read BMP280 (pressure/altitude)
+ */
+esp_err_t sensor_manager_read_pressure(float *pressure_hpa, float *altitude_m)
+{
+    return bmp280_read_pressure(pressure_hpa);
+}
+
+/**
+ * @brief Read SGP30 (CO2/TVOC)
+ */
+esp_err_t sensor_manager_read_air_quality(float *co2_ppm, float *tvoc_ppb)
+{
+    uint16_t co2, tvoc;
+    esp_err_t ret = sgp30_read(&co2, &tvoc);
+    
+    if (ret == ESP_OK) {
+        if (co2_ppm) *co2_ppm = (float)co2;
+        if (tvoc_ppb) *tvoc_ppb = (float)tvoc;
+    }
+    
+    return ret;
+}
+
+/**
+ * @brief Read PMS5003 (particulate matter)
+ */
+esp_err_t sensor_manager_read_particulate(uint16_t *pm25, uint16_t *pm10)
+{
+    pms5003_data_t data;
+    esp_err_t ret = pms5003_read(&data);
+    
+    if (ret == ESP_OK) {
+        if (pm25) *pm25 = data.pm2_5_atm;
+        if (pm10) *pm10 = data.pm10_atm;
+    }
+    
+    return ret;
+}
+
+/**
+ * @brief Read HX711 (weight)
+ */
+esp_err_t sensor_manager_read_weight(float *weight_g)
+{
+    return hx711_read_weight(weight_g);
+}
+
+/**
+ * @brief Read ACS712 (current/power)
+ */
+esp_err_t sensor_manager_read_current(float *current_amps, float *power_watts)
+{
+    esp_err_t ret = acs712_read_current(current_amps);
+    
+    if (ret == ESP_OK && power_watts) {
+        *power_watts = *current_amps * 220.0f;
+    }
+    
+    return ret;
+}
+
+/**
+ * @brief Tare (zero) weight sensor
+ */
+esp_err_t sensor_manager_tare_weight(uint8_t samples)
+{
+    return hx711_tare(samples);
+}
+
+/**
+ * @brief Calibrate weight sensor with known weight
+ */
+esp_err_t sensor_manager_calibrate_weight(float known_weight_g)
+{
+    int32_t raw;
+    esp_err_t ret = hx711_read_raw(&raw);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    
+    /* Calculate new calibration factor */
+    float cal_factor = (float)(raw - hx711_get_offset()) / known_weight_g;
+    return hx711_set_calibration(cal_factor);
+}
+
+/**
+ * @brief Calibrate current sensor
+ */
+esp_err_t sensor_manager_calibrate_current(int offset)
+{
+    return acs712_set_offset(offset);
+}
+
+/**
+ * @brief Get cumulative energy
+ */
+esp_err_t sensor_manager_get_energy(float *energy_wh)
+{
+    if (energy_wh == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    acs712_update_energy();
+    *energy_wh = acs712_get_energy_wh();
+    return ESP_OK;
+}
+
+/**
+ * @brief Reset energy counter
+ */
+esp_err_t sensor_manager_reset_energy(void)
+{
+    return acs712_reset_energy();
 }
 
 /**

@@ -48,4 +48,50 @@ void decision_algorithm_evaluate(const sensor_data_t *data, decision_output_t *o
  */
 bool decision_algorithm_check_water_alert(float current_consumption);
 
+/* ============================================================================
+ * NEW SENSOR CONTROL FUNCTIONS (Smart Poultry V3)
+ * ============================================================================ */
+
+/**
+ * @brief Evaluate pressure-based ventilation control
+ * @param data Sensor data
+ * @param output Control output
+ */
+void decision_algorithm_evaluate_pressure(const sensor_data_t *data, decision_output_t *output);
+
+/**
+ * @brief Evaluate particulate matter control
+ * @param data Sensor data
+ * @param output Control output
+ */
+void decision_algorithm_evaluate_particulate(const sensor_data_t *data, decision_output_t *output);
+
+/**
+ * @brief Evaluate TVOC control
+ * @param data Sensor data
+ * @param output Control output
+ */
+void decision_algorithm_evaluate_tvoc(const sensor_data_t *data, decision_output_t *output);
+
+/**
+ * @brief Evaluate AQI-based control
+ * @param data Sensor data
+ * @param output Control output
+ */
+void decision_algorithm_evaluate_aqi(const sensor_data_t *data, decision_output_t *output);
+
+/**
+ * @brief Check weight for growth monitoring
+ * @param data Sensor data
+ * @return true if weight is significantly below target
+ */
+bool decision_algorithm_check_weight_alert(const sensor_data_t *data);
+
+/**
+ * @brief Check energy consumption alert
+ * @param data Sensor data
+ * @return true if power consumption is abnormal
+ */
+bool decision_algorithm_check_energy_alert(const sensor_data_t *data);
+
 #endif /* DECISION_ALGORITHM_H */
