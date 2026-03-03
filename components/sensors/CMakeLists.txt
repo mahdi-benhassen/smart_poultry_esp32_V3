@@ -20,5 +20,5 @@ idf_component_register(
         "acs712.c"
     INCLUDE_DIRS 
         "include"
-    REQUIRES driver esp_adc nvs_flash esp_timer esp_idf_lib_helpers
+    REQUIRES driver esp_adc nvs_flash esp_timer
 )
