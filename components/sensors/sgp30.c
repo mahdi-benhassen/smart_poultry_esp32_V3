@@ -38,6 +38,9 @@ static bool s_iaq_init = false;
 static uint8_t s_feature_set_version = 0;
 static uint64_t s_unique_id = 0;
 
+/* Forward declarations */
+static uint8_t sgp30_crc8(uint8_t *data, uint8_t len);
+
 /**
  * @brief Write command with parameters
  */
