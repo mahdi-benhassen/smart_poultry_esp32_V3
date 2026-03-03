@@ -3,9 +3,10 @@
  */
 
 #include <esp_log.h>
-#include "esp_app_format.h"
+#include "esp_system.h"
 
 static const char *TAG = "OTA_UPDATE";
+static const char *FIRMWARE_VERSION = "1.0.0";
 
 /**
  * @brief Check for OTA updates
@@ -37,5 +38,5 @@ esp_err_t ota_update_perform(const char *firmware_url)
  */
 const char* ota_update_get_version(void)
 {
-    return esp_ota_get_app_description()->version;
+    return FIRMWARE_VERSION;
 }
