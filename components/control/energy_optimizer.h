@@ -5,7 +5,7 @@
 #ifndef ENERGY_OPTIMIZER_H
 #define ENERGY_OPTIMIZER_H
 
-typedef struct decision_output decision_output_t;
+#include "decision_algorithm.h"
 
 /**
  * @brief Initialize energy optimizer

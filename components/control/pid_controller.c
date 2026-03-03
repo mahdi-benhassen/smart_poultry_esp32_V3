@@ -26,7 +26,7 @@ static struct {
     .initialized = false
 };
 
-#define PID_OUTPUT_MIN   0.0f
+#define PID_OUTPUT_MIN   -100.0f
 #define PID_OUTPUT_MAX   100.0f
 #define PID_INTEGRAL_MAX 1000.0f
 

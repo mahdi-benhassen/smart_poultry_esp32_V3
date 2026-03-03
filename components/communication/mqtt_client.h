@@ -2,10 +2,11 @@
  * MQTT Client - Header File
  */
 
-#ifndef MQTT_CLIENT_H
-#define MQTT_CLIENT_H
+#ifndef POULTRY_MQTT_CLIENT_H
+#define POULTRY_MQTT_CLIENT_H
 
 #include <esp_err.h>
+#include <mqtt_client.h>  /* ESP-IDF MQTT types (esp_mqtt_client_handle_t, etc.) */
 
 /**
  * @brief Initialize MQTT client (without authentication)
@@ -27,4 +28,4 @@ esp_err_t mqtt_client_publish(const char *topic, const char *data, int len);
  */
 esp_err_t mqtt_client_subscribe(const char *topic);
 
-#endif /* MQTT_CLIENT_H */
+#endif /* POULTRY_MQTT_CLIENT_H */

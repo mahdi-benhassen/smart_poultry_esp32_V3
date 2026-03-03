@@ -7,9 +7,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
-/* Forward declaration */
-typedef struct sensor_data sensor_data_t;
+#include "sensor_manager.h"
 
 /* Rules result */
 typedef struct {

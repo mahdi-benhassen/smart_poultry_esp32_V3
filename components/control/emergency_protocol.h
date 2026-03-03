@@ -7,8 +7,7 @@
 #define EMERGENCY_PROTOCOL_H
 
 #include <stdbool.h>
-
-typedef struct sensor_data sensor_data_t;
+#include "sensor_manager.h"
 
 /**
  * @brief Initialize emergency protocol

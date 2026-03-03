@@ -24,15 +24,7 @@ static bool s_initialized = false;
 static SemaphoreHandle_t s_sensor_mutex = NULL;
 
 /* Default thresholds */
-static struct {
-    float temp_min;
-    float temp_max;
-    float temp_optimal;
-    float humidity_min;
-    float humidity_max;
-    float ammonia_max;
-    float co_max;
-} s_thresholds = {
+static rules_engine_thresholds_t s_thresholds = {
     .temp_min = 18.0f,
     .temp_max = 32.0f,
     .temp_optimal = 25.0f,

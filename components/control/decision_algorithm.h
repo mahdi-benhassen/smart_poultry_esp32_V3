@@ -11,7 +11,7 @@
 #include "../../main/include/main.h"
 
 /* Decision output */
-typedef struct {
+typedef struct decision_output {
     uint8_t fan1_speed;
     uint8_t fan2_speed;
     bool cooling_pad_on;

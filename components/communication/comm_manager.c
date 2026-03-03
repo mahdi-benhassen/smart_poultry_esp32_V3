@@ -4,8 +4,6 @@
 
 #include <esp_log.h>
 #include "comm_manager.h"
-#include "wifi_manager.c" // This is unusual but sometimes done if we don't want to export everything. 
-                          // Better: include the headers.
 #include "mqtt_client.h"
 
 static const char *TAG = "COMM_MGR";

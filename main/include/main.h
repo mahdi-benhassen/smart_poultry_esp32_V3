@@ -202,9 +202,7 @@ typedef struct {
 #define DEFAULT_MQTT_BROKER      "mqtt://localhost"
 #define DEFAULT_MQTT_PORT        1883
 
-/* PWM Configuration */
-#define PWM_FREQ                 1000    /* 1 kHz */
-
+/* GPIO Pin Definitions for Actuators */
 #define GPIO_FAN1_PWM            12
 #define GPIO_FAN1_EN             13
 #define GPIO_FAN2_PWM            14

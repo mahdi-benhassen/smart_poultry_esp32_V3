@@ -43,7 +43,7 @@ typedef enum {
 } sensor_type_t;
 
 /* Sensor Data Structure */
-typedef struct {
+typedef struct sensor_data {
     float temperature;
     float humidity;
     float temperature_ds18b20;
