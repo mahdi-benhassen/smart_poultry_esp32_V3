@@ -586,7 +586,7 @@ esp_err_t sensor_manager_read_all(void *data)
  */
 esp_err_t sensor_manager_read(sensor_type_t type, float *value)
 {
-    esp_err_t ret = ESP_OK;
+    esp_err_t ret = ESP_ERR_NOT_FOUND;
     
     if (type >= SENSOR_TYPE_MAX || value == NULL) {
         return ESP_ERR_INVALID_ARG;
@@ -596,7 +596,7 @@ esp_err_t sensor_manager_read(sensor_type_t type, float *value)
 #ifdef CONFIG_ENABLE_SENSOR_DHT22
         case SENSOR_TYPE_DHT22:
             ret = dht22_read(value, value + 1);
-            *value = *(value + 1);
+            if (ret == ESP_OK) *value = *(value + 1);
             break;
 #endif
 #ifdef CONFIG_ENABLE_SENSOR_DS18B20
@@ -627,7 +627,7 @@ esp_err_t sensor_manager_read(sensor_type_t type, float *value)
 #ifdef CONFIG_ENABLE_SENSOR_WATER_LEVEL
         case SENSOR_TYPE_WATER_LEVEL:
             ret = water_level_read((uint8_t *)value);
-            *value = *(uint8_t *)value;
+            if (ret == ESP_OK) *value = *(uint8_t *)value;
             break;
 #endif
 #ifdef CONFIG_ENABLE_SENSOR_SOUND
@@ -640,10 +640,11 @@ esp_err_t sensor_manager_read(sensor_type_t type, float *value)
             ret = bmp280_read_pressure(value);
             break;
 #endif
-#ifdef CONFIG_ENABLE_SENSOR_SGP30: {
+#ifdef CONFIG_ENABLE_SENSOR_SGP30
+        case SENSOR_TYPE_SGP30: {
             uint16_t co2, tvoc;
             ret = sgp30_read(&co2, &tvoc);
-            *value = (float)co2;
+            if (ret == ESP_OK) *value = (float)co2;
             break;
         }
 #endif
@@ -663,7 +664,8 @@ esp_err_t sensor_manager_read(sensor_type_t type, float *value)
             break;
 #endif
         default:
-            return ESP_ERR_NOT_FOUND;
+            ret = ESP_ERR_NOT_FOUND;
+            break;
     }
     
     if (ret == ESP_OK) {
