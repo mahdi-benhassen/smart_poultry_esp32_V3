@@ -142,14 +142,21 @@ esp_err_t control_manager_update_sensors(const sensor_data_t *data)
 /**
  * @brief Get current sensor data
  */
-sensor_data_t* control_manager_get_sensor_data(void)
+esp_err_t control_manager_get_sensor_data(sensor_data_t *out_data)
 {
+    if (out_data == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
     if (s_sensor_mutex != NULL) {
         xSemaphoreTake(s_sensor_mutex, portMAX_DELAY);
     }
-    sensor_data_t *result = &s_sensor_data;
-    /* Note: Caller must release mutex after use - simplified for now */
-    return result;
+    memcpy(out_data, &s_sensor_data, sizeof(sensor_data_t));
+    if (s_sensor_mutex != NULL) {
+        xSemaphoreGive(s_sensor_mutex);
+    }
+
+    return ESP_OK;
 }
 
 /**

@@ -22,7 +22,7 @@ esp_err_t control_manager_update_sensors(const sensor_data_t *data);
 /**
  * @brief Get current sensor data
  */
-sensor_data_t* control_manager_get_sensor_data(void);
+esp_err_t control_manager_get_sensor_data(sensor_data_t *out_data);
 
 /**
  * @brief Update configuration
