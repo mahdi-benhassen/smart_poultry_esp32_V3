@@ -1,0 +1,32 @@
+# Build directories
+build/
+sdkconfig
+sdkconfig.old
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# ESP-IDF
+dependencies.lock
+.esp-idf/
+.pio/
+.vscode/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Binaries
+*.bin
+*.elf
+*.map

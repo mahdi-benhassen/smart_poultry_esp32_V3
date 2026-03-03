@@ -13,7 +13,7 @@
 #include "sensor_manager.h"
 
 /* Version */
-#define SMART_POULTRY_VERSION "1.1.0"
+#define SMART_POULTRY_VERSION "3.0.0"
 
 /* Flock Types */
 typedef enum {
@@ -230,5 +230,68 @@ typedef struct {
 #define ERR_WATER_TEMP_HIGH      0x07
 #define ERR_WATER_CONSUMPTION    0x08
 #define ERR_EMERGENCY_TRIGGERED  0x09
+
+/* ============================================================================
+ * NEW SENSOR THRESHOLDS (Smart Poultry V3)
+ * ============================================================================ */
+
+/* --- Barometric Pressure (BMP280) --- */
+/* Pressure affects ventilation - sudden drops indicate storms */
+#define PRESSURE_NORMAL          1013.25f  /* hPa - Standard sea level */
+#define PRESSURE_LOW             1000.0f   /* hPa - May indicate rain */
+#define PRESSURE_HIGH            1025.0f   /* hPa - Good weather */
+#define PRESSURE_STORM_WARNING   980.0f    /* hPa - Storm warning */
+#define PRESSURE_DIFF_WARNING    10.0f     /* hPa - Sudden drop warning */
+
+/* --- Particulate Matter (PMS5003) --- */
+/* PM2.5/PM10 critical for poultry respiratory health */
+#define PM25_OPTIMAL             0.0f      /* μg/m³ - Optimal */
+#define PM25_GOOD                15.0f     /* μg/m³ - Good */
+#define PM25_MODERATE            35.0f     /* μg/m³ - Moderate */
+#define PM25_UNHEALTHY_SENS     55.0f     /* μg/m³ - Unhealthy for sensitive */
+#define PM25_UNHEALTHY          150.0f    /* μg/m³ - Unhealthy */
+#define PM25_VERY_UNHEALTHY     250.0f    /* μg/m³ - Very unhealthy */
+#define PM25_HAZARDOUS          500.0f    /* μg/m³ - Hazardous */
+
+#define PM10_OPTIMAL             0.0f      /* μg/m³ - Optimal */
+#define PM10_GOOD                20.0f     /* μg/m³ - Good */
+#define PM10_MODERATE            50.0f     /* μg/m³ - Moderate */
+#define PM10_UNHEALTHY_SENS     70.0f     /* μg/m³ - Unhealthy for sensitive */
+#define PM10_UNHEALTHY          150.0f    /* μg/m³ - Unhealthy */
+#define PM10_VERY_UNHEALTHY     350.0f    /* μg/m³ - Very unhealthy */
+#define PM10_HAZARDOUS          600.0f    /* μg/m³ - Hazardous */
+
+/* --- TVOC (SGP30) --- */
+#define TVOC_OPTIMAL             0.0f      /* ppb - Optimal */
+#define TVOC_GOOD                200.0f    /* ppb - Good */
+#define TVOC_MODERATE           500.0f    /* ppb - Moderate */
+#define TVOC_UNHEALTHY          5000.0f   /* ppb - Unhealthy */
+
+/* --- Weight Monitoring (HX711) --- */
+/* Weight tracking for flock health and growth */
+#define WEIGHT_MIN_BROILER_DAY1  40.0f     /* grams - Day old chick minimum */
+#define WEIGHT_MAX_BROILER_DAY1  50.0f     /* grams */
+#define WEIGHT_TARGET_BROILER_7D 180.0f    /* grams - Day 7 target */
+#define WEIGHT_TARGET_BROILER_14D 500.0f   /* grams - Day 14 target */
+#define WEIGHT_TARGET_BROILER_21D 1000.0f  /* grams - Day 21 target */
+#define WEIGHT_TARGET_BROILER_35D 2500.0f  /* grams - Day 35 target */
+#define WEIGHT_LAYER_MIN         2000.0f   /* grams - Minimum for layers */
+#define WEIGHT_DROP_ALERT        10.0f     /* % - Alert if dropped */
+
+/* --- Energy Monitoring (ACS712) --- */
+#define CURRENT_MAX_FAN          5.0f      /* Amps - Per fan */
+#define CURRENT_MAX_COOLING      10.0f     /* Amps - Cooling system */
+#define CURRENT_MAX_HEATER       15.0f     /* Amps - Heater */
+#define CURRENT_MAX_TOTAL         30.0f     /* Amps - Total system */
+#define POWER_MAX_DAILY          15000.0f /* Wh - Daily energy limit */
+#define POWER_STANDBY            5.0f      /* Wh - Standby power */
+
+/* --- Air Quality Index (AQI) --- */
+/* Combined air quality metric */
+#define AQI_GOOD_THRESHOLD       50
+#define AQI_MODERATE_THRESHOLD  100
+#define AQI_SENSITIVE_THRESHOLD  150
+#define AQI_UNHEALTHY_THRESHOLD  200
+#define AQI_VERY_UNHEALTHY_THRESHOLD 300
 
 #endif /* MAIN_H */
