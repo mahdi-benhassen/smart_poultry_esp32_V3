@@ -2,11 +2,12 @@
 # Smart Poultry V3 - Modular Architecture
 
 set(STORAGE_SRCS "storage_manager.c")
-set(STORAGE_REQUIRES)
+
+# Always require nvs_flash since storage_manager.c uses it conditionally
+list(APPEND STORAGE_REQUIRES nvs_flash)
 
 if(CONFIG_ENABLE_STORAGE_NVS)
     list(APPEND STORAGE_SRCS "nvs_storage.c")
-    list(APPEND STORAGE_REQUIRES nvs_flash)
 endif()
 
 if(CONFIG_ENABLE_STORAGE_SPIFFS)
