@@ -39,10 +39,10 @@ jobs:
       - name: Rename firmware for release
         run: |
           cd build
-          # Find the app binary and rename with version
+          # Find the app binary and copy with version
           for f in *.bin; do
             if [ -f "$f" ]; then
-              mv "$f" "smart-poultry-v3-${{ steps.version.outputs.VERSION }}.bin"
+              cp "$f" "smart-poultry-v3-${{ steps.version.outputs.VERSION }}.bin"
             fi
           done
           ls -lh *.bin
