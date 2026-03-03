@@ -1,0 +1,17 @@
+# Communication Component Configuration
+
+menu "Communication Configuration"
+
+    config ENABLE_COMM_WIFI
+        bool "Enable WiFi"
+        default y
+
+    config ENABLE_COMM_MQTT
+        bool "Enable MQTT"
+        default y
+
+    config ENABLE_COMM_OTA
+        bool "Enable OTA Updates"
+        default n
+
+endmenu

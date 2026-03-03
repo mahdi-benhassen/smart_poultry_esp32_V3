@@ -1,0 +1,33 @@
+# Actuators Component Configuration
+
+menu "Actuators Configuration"
+
+    config ENABLE_ACTUATOR_EXHAUST_FAN
+        bool "Enable Exhaust Fan"
+        default y
+
+    config ENABLE_ACTUATOR_COOLING_PAD
+        bool "Enable Cooling Pad"
+        default y
+
+    config ENABLE_ACTUATOR_HEATER
+        bool "Enable Heater"
+        default y
+
+    config ENABLE_ACTUATOR_LED_LIGHT
+        bool "Enable LED Light"
+        default y
+
+    config ENABLE_ACTUATOR_FEEDER
+        bool "Enable Feeder"
+        default y
+
+    config ENABLE_ACTUATOR_WATER_PUMP
+        bool "Enable Water Pump"
+        default y
+
+    config ENABLE_ACTUATOR_ALARM
+        bool "Enable Alarm"
+        default y
+
+endmenu

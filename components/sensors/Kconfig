@@ -1,0 +1,57 @@
+# Sensors Component Configuration
+
+menu "Sensors Configuration"
+
+    config ENABLE_SENSOR_DHT22
+        bool "Enable DHT22 Temperature/Humidity Sensor"
+        default y
+
+    config ENABLE_SENSOR_DS18B20
+        bool "Enable DS18B20 Temperature Sensor"
+        default y
+
+    config ENABLE_SENSOR_MQ135
+        bool "Enable MQ135 Air Quality Sensor"
+        default y
+
+    config ENABLE_SENSOR_MQ7
+        bool "Enable MQ7 CO Sensor"
+        default y
+
+    config ENABLE_SENSOR_MQ2
+        bool "Enable MQ2 Smoke/Gas Sensor"
+        default y
+
+    config ENABLE_SENSOR_LDR
+        bool "Enable LDR Light Sensor"
+        default y
+
+    config ENABLE_SENSOR_WATER_LEVEL
+        bool "Enable Water Level Sensor"
+        default y
+
+    config ENABLE_SENSOR_SOUND
+        bool "Enable Sound Sensor"
+        default y
+
+    config ENABLE_SENSOR_BMP280
+        bool "Enable BMP280 Pressure/Temperature Sensor"
+        default y
+
+    config ENABLE_SENSOR_SGP30
+        bool "Enable SGP30 Air Quality Sensor"
+        default y
+
+    config ENABLE_SENSOR_PMS5003
+        bool "Enable PMS5003 Air Quality Sensor"
+        default y
+
+    config ENABLE_SENSOR_HX711
+        bool "Enable HX711 Load Cell"
+        default y
+
+    config ENABLE_SENSOR_ACS712
+        bool "Enable ACS712 Current Sensor"
+        default y
+
+endmenu

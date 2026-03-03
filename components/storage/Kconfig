@@ -1,0 +1,13 @@
+# Storage Component Configuration
+
+menu "Storage Configuration"
+
+    config ENABLE_STORAGE_NVS
+        bool "Enable NVS Storage"
+        default y
+
+    config ENABLE_STORAGE_SPIFFS
+        bool "Enable SPIFFS File System"
+        default y
+
+endmenu

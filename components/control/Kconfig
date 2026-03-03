@@ -1,0 +1,21 @@
+# Control Component Configuration
+
+menu "Control Configuration"
+
+    config ENABLE_CONTROL_RULES_ENGINE
+        bool "Enable Rules Engine"
+        default y
+
+    config ENABLE_CONTROL_PID
+        bool "Enable PID Controller"
+        default y
+
+    config ENABLE_CONTROL_ENERGY_OPTIMIZER
+        bool "Enable Energy Optimizer"
+        default y
+
+    config ENABLE_CONTROL_EMERGENCY_PROTOCOL
+        bool "Enable Emergency Protocol"
+        default y
+
+endmenu

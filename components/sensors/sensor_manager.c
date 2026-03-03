@@ -1,6 +1,7 @@
 /**
  * Sensor Manager - Implementation
  * Smart Poultry V3 - Extended Sensor Support
+ * Modular architecture - sensors can be enabled/disabled via Kconfig
  */
 
 #include <string.h>
@@ -16,19 +17,58 @@
 #include "esp_adc/adc_cali_scheme.h"
 
 #include "sensor_manager.h"
+
+#ifdef CONFIG_ENABLE_SENSOR_DHT22
 #include "dht22.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_DS18B20
 #include "ds18b20.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_MQ135
 #include "mq135.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_MQ7
 #include "mq7.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_MQ2
 #include "mq2.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_LDR
 #include "ldr.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_WATER_LEVEL
 #include "water_level.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_SOUND
 #include "sound_sensor.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_BMP280
 #include "bmp280.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_SGP30
 #include "sgp30.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_PMS5003
 #include "pms5003.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_HX711
 #include "hx711.h"
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_ACS712
 #include "acs712.h"
+#endif
 
 static const char *TAG = "SENSOR_MGR";
 
@@ -40,18 +80,23 @@ static bool s_i2c_initialized = false;
 
 /* Sensor configurations */
 static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
+#ifdef CONFIG_ENABLE_SENSOR_DHT22
     [SENSOR_TYPE_DHT22] = {
         .gpio = GPIO_DHT22,
         .calibration_offset = 0.0f,
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_DS18B20
     [SENSOR_TYPE_DS18B20] = {
         .gpio = GPIO_DS18B20,
         .calibration_offset = 0.0f,
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_MQ135
     [SENSOR_TYPE_MQ135] = {
         .gpio = GPIO_MQ135,
         .adc_channel = ADC_MQ135,
@@ -59,6 +104,8 @@ static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_MQ7
     [SENSOR_TYPE_MQ7] = {
         .gpio = GPIO_MQ7,
         .adc_channel = ADC_MQ7,
@@ -66,6 +113,8 @@ static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_MQ2
     [SENSOR_TYPE_MQ2] = {
         .gpio = GPIO_MQ2,
         .adc_channel = ADC_MQ2,
@@ -73,6 +122,8 @@ static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_LDR
     [SENSOR_TYPE_LDR] = {
         .gpio = GPIO_LDR,
         .adc_channel = ADC_LDR,
@@ -80,6 +131,8 @@ static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_WATER_LEVEL
     [SENSOR_TYPE_WATER_LEVEL] = {
         .gpio = GPIO_WATER_LEVEL,
         .adc_channel = ADC_WATER_LEVEL,
@@ -87,6 +140,8 @@ static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_SOUND
     [SENSOR_TYPE_SOUND] = {
         .gpio = GPIO_SOUND,
         .adc_channel = ADC_SOUND,
@@ -94,30 +149,40 @@ static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_BMP280
     [SENSOR_TYPE_BMP280] = {
         .gpio = GPIO_NUM_NC,
         .calibration_offset = 0.0f,
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_SGP30
     [SENSOR_TYPE_SGP30] = {
         .gpio = GPIO_NUM_NC,
         .calibration_offset = 0.0f,
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_PMS5003
     [SENSOR_TYPE_PMS5003] = {
         .gpio = GPIO_NUM_NC,
         .calibration_offset = 0.0f,
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_HX711
     [SENSOR_TYPE_HX711] = {
         .gpio = GPIO_HX711_DOUT,
         .calibration_offset = 0.0f,
         .calibration_scale = 1.0f,
         .enabled = true
     },
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_ACS712
     [SENSOR_TYPE_ACS712] = {
         .gpio = GPIO_NUM_NC,
         .adc_channel = ADC_ACS712,
@@ -125,6 +190,7 @@ static sensor_config_t sensor_configs[SENSOR_TYPE_MAX] = {
         .calibration_scale = 1.0f,
         .enabled = true
     }
+#endif
 };
 
 /* Last sensor readings */
@@ -173,8 +239,10 @@ esp_err_t sensor_manager_init_i2c_sensors(void)
  */
 esp_err_t sensor_manager_init_uart_sensors(void)
 {
+#ifdef CONFIG_ENABLE_SENSOR_PMS5003
     ESP_LOGI(TAG, "PMS5003 UART config: UART%d TX=%d RX=%d", 
              PMS5003_UART_NUM, PMS5003_TX_PIN, PMS5003_RX_PIN);
+#endif
     return ESP_OK;
 }
 
@@ -185,7 +253,7 @@ esp_err_t sensor_manager_init(void)
 {
     esp_err_t ret = ESP_OK;
     
-    ESP_LOGI(TAG, "Initializing sensors (Smart Poultry V3 Extended)...");
+    ESP_LOGI(TAG, "Initializing sensors (Smart Poultry V3 Extended - Modular)...");
     
     /* Initialize ADC Oneshot Unit */
     adc_oneshot_unit_init_cfg_t init_config = {
@@ -203,106 +271,125 @@ esp_err_t sensor_manager_init(void)
         .atten = ADC_ATTEN_DB_11,
     };
     
-    /* MQ135 */
+#ifdef CONFIG_ENABLE_SENSOR_MQ135
     ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_MQ135, &config));
-    /* MQ7 */
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_MQ7
     ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_MQ7, &config));
-    /* MQ2 */
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_MQ2
     ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_MQ2, &config));
-    /* LDR */
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_LDR
     ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_LDR, &config));
-    /* Water Level */
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_WATER_LEVEL
     ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_WATER_LEVEL, &config));
-    /* Sound */
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_SOUND
     ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, ADC_SOUND, &config));
+#endif
     
-    /* Initialize DHT22 */
+#ifdef CONFIG_ENABLE_SENSOR_DHT22
     ret = dht22_init(sensor_configs[SENSOR_TYPE_DHT22].gpio);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize DHT22: %s", esp_err_to_name(ret));
     }
-    
-    /* Initialize DS18B20 */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_DS18B20
     ret = ds18b20_init(sensor_configs[SENSOR_TYPE_DS18B20].gpio);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize DS18B20: %s", esp_err_to_name(ret));
     }
-    
-    /* Initialize MQ135 */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_MQ135
     ret = mq135_init(s_adc_handle, sensor_configs[SENSOR_TYPE_MQ135].adc_channel);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize MQ135: %s", esp_err_to_name(ret));
     }
-    
-    /* Initialize MQ7 */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_MQ7
     ret = mq7_init(s_adc_handle, sensor_configs[SENSOR_TYPE_MQ7].adc_channel);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize MQ7: %s", esp_err_to_name(ret));
     }
-    
-    /* Initialize MQ2 */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_MQ2
     ret = mq2_init(s_adc_handle, sensor_configs[SENSOR_TYPE_MQ2].adc_channel);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize MQ2: %s", esp_err_to_name(ret));
     }
-    
-    /* Initialize LDR */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_LDR
     ret = ldr_init(s_adc_handle, sensor_configs[SENSOR_TYPE_LDR].adc_channel);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize LDR: %s", esp_err_to_name(ret));
     }
-    
-    /* Initialize Water Level */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_WATER_LEVEL
     ret = water_level_init(s_adc_handle, sensor_configs[SENSOR_TYPE_WATER_LEVEL].adc_channel);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize Water Level sensor: %s", esp_err_to_name(ret));
     }
-    
-    /* Initialize Sound */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_SOUND
     ret = sound_sensor_init(s_adc_handle, sensor_configs[SENSOR_TYPE_SOUND].adc_channel);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize Sound sensor: %s", esp_err_to_name(ret));
     }
-    
-    /* Initialize I2C sensors */
+#endif
+
+#if defined(CONFIG_ENABLE_SENSOR_BMP280) || defined(CONFIG_ENABLE_SENSOR_SGP30)
     ret = sensor_manager_init_i2c_sensors();
     if (ret == ESP_OK) {
-        /* Initialize BMP280 */
+#ifdef CONFIG_ENABLE_SENSOR_BMP280
         ret = bmp280_init(SENSORS_I2C_NUM, BMP280_ADDR);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to initialize BMP280: %s", esp_err_to_name(ret));
         }
+#endif
         
-        /* Initialize SGP30 */
+#ifdef CONFIG_ENABLE_SENSOR_SGP30
         ret = sgp30_init(SENSORS_I2C_NUM);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to initialize SGP30: %s", esp_err_to_name(ret));
         }
+#endif
     }
-    
-    /* Initialize UART sensors */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_PMS5003
     sensor_manager_init_uart_sensors();
     ret = pms5003_init(PMS5003_UART_NUM, PMS5003_TX_PIN, PMS5003_RX_PIN);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize PMS5003: %s", esp_err_to_name(ret));
     }
-    
-    /* Initialize HX711 weight sensor */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_HX711
     ret = hx711_init(GPIO_HX711_DOUT, GPIO_HX711_SCK);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize HX711: %s", esp_err_to_name(ret));
     } else {
-        /* Tare the scale on startup */
         hx711_tare(10);
     }
-    
-    /* Initialize ACS712 current sensor */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_ACS712
     ret = acs712_init(ACS712_20A, ADC_ACS712);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize ACS712: %s", esp_err_to_name(ret));
     }
-    
-    ESP_LOGI(TAG, "Sensor initialization complete (Extended V3)");
+#endif
+
+    ESP_LOGI(TAG, "Sensor initialization complete (Extended V3 - Modular)");
     
     return ESP_OK;
 }
@@ -316,10 +403,8 @@ aqi_level_t sensor_manager_calculate_aqi(const sensor_data_t *data)
         return AQI_GOOD;
     }
     
-    /* Calculate AQI based on multiple factors */
     float aqi = 0.0f;
     
-    /* PM2.5 contribution (0-100 scale, critical for respiratory health) */
     if (data->pm2_5_atm > 0) {
         if (data->pm2_5_atm <= 35) {
             aqi += (data->pm2_5_atm / 35.0f) * 25;
@@ -332,25 +417,20 @@ aqi_level_t sensor_manager_calculate_aqi(const sensor_data_t *data)
         }
     }
     
-    /* CO2 contribution */
     if (data->co2_ppm > 1000) {
         aqi += ((data->co2_ppm - 1000) / 4000.0f) * 30;
     }
     
-    /* Ammonia contribution */
     if (data->ammonia_ppm > 10) {
         aqi += ((data->ammonia_ppm - 10) / 40.0f) * 40;
     }
     
-    /* TVOC contribution */
     if (data->tvoc_ppb > 200) {
         aqi += ((data->tvoc_ppb - 200) / 5800.0f) * 30;
     }
     
-    /* Cap at 500 */
     if (aqi > 500) aqi = 500;
     
-    /* Determine AQI level */
     if (aqi <= 50) return AQI_GOOD;
     else if (aqi <= 100) return AQI_MODERATE;
     else if (aqi <= 150) return AQI_UNHEALTHY_SENSITIVE;
@@ -368,67 +448,70 @@ esp_err_t sensor_manager_read_all(void *data)
     esp_err_t ret;
     uint32_t timestamp = esp_log_timestamp();
     
-    /* Initialize with default values */
     memset(sensor_data, 0, sizeof(sensor_data_t));
     sensor_data->timestamp = timestamp;
     
-    /* Read temperature and humidity from DHT22 */
+#ifdef CONFIG_ENABLE_SENSOR_DHT22
     ret = dht22_read(&sensor_data->temperature, &sensor_data->humidity);
     if (ret == ESP_OK) {
         last_readings[SENSOR_TYPE_DHT22] = sensor_data->temperature;
         last_timestamps[SENSOR_TYPE_DHT22] = timestamp;
         readings_valid[SENSOR_TYPE_DHT22] = true;
     }
-    
-    /* Read temperature from DS18B20 */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_DS18B20
     ret = ds18b20_read(&sensor_data->temperature_ds18b20);
     if (ret == ESP_OK) {
         last_readings[SENSOR_TYPE_DS18B20] = sensor_data->temperature_ds18b20;
         last_timestamps[SENSOR_TYPE_DS18B20] = timestamp;
         readings_valid[SENSOR_TYPE_DS18B20] = true;
     }
-    
-    /* Temperature selection: prefer DHT22 if valid, otherwise use DS18B20 */
+#endif
+
     if (readings_valid[SENSOR_TYPE_DHT22]) {
         sensor_data->temperature = sensor_data->temperature;
     } else if (readings_valid[SENSOR_TYPE_DS18B20]) {
         sensor_data->temperature = sensor_data->temperature_ds18b20;
     }
     
-    /* Read BMP280 - Barometric Pressure */
+#ifdef CONFIG_ENABLE_SENSOR_BMP280
     ret = bmp280_read(&sensor_data->temperature, &sensor_data->pressure_hpa);
     if (ret == ESP_OK) {
-        /* Use BMP280 temperature as additional reference */
         last_readings[SENSOR_TYPE_BMP280] = sensor_data->pressure_hpa;
         readings_valid[SENSOR_TYPE_BMP280] = true;
-        
-        /* Calculate altitude if sea level pressure known */
         bmp280_read_altitude(1013.25f, &sensor_data->altitude_m);
     }
-    
-    /* Read gas sensors */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_MQ135
     ret = mq135_read(&sensor_data->ammonia_ppm);
     if (ret == ESP_OK) {
         last_readings[SENSOR_TYPE_MQ135] = sensor_data->ammonia_ppm;
         last_timestamps[SENSOR_TYPE_MQ135] = timestamp;
         readings_valid[SENSOR_TYPE_MQ135] = true;
     }
-    
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_MQ7
     ret = mq7_read(&sensor_data->co_ppm);
     if (ret == ESP_OK) {
         last_readings[SENSOR_TYPE_MQ7] = sensor_data->co_ppm;
         last_timestamps[SENSOR_TYPE_MQ7] = timestamp;
         readings_valid[SENSOR_TYPE_MQ7] = true;
     }
-    
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_MQ2
     ret = mq2_read(&sensor_data->lpg_ppm);
     if (ret == ESP_OK) {
         last_readings[SENSOR_TYPE_MQ2] = sensor_data->lpg_ppm;
         last_timestamps[SENSOR_TYPE_MQ2] = timestamp;
         readings_valid[SENSOR_TYPE_MQ2] = true;
     }
-    
-    /* Read SGP30 - CO2 and TVOC */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_SGP30
     uint16_t co2_ppm, tvoc_ppb;
     ret = sgp30_read(&co2_ppm, &tvoc_ppb);
     if (ret == ESP_OK) {
@@ -436,8 +519,9 @@ esp_err_t sensor_manager_read_all(void *data)
         sensor_data->tvoc_ppb = (float)tvoc_ppb;
         readings_valid[SENSOR_TYPE_SGP30] = true;
     }
-    
-    /* Read PMS5003 - Particulate Matter */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_PMS5003
     pms5003_data_t pm_data;
     ret = pms5003_read(&pm_data);
     if (ret == ESP_OK) {
@@ -446,50 +530,52 @@ esp_err_t sensor_manager_read_all(void *data)
         sensor_data->pm10_atm = pm_data.pm10_atm;
         readings_valid[SENSOR_TYPE_PMS5003] = true;
     }
-    
-    /* Read light level */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_LDR
     ret = ldr_read(&sensor_data->light_percent);
     if (ret == ESP_OK) {
         last_readings[SENSOR_TYPE_LDR] = sensor_data->light_percent;
         last_timestamps[SENSOR_TYPE_LDR] = timestamp;
         readings_valid[SENSOR_TYPE_LDR] = true;
     }
-    
-    /* Read water level */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_WATER_LEVEL
     ret = water_level_read(&sensor_data->water_level);
     if (ret == ESP_OK) {
         last_readings[SENSOR_TYPE_WATER_LEVEL] = sensor_data->water_level;
         last_timestamps[SENSOR_TYPE_WATER_LEVEL] = timestamp;
         readings_valid[SENSOR_TYPE_WATER_LEVEL] = true;
     }
-    
-    /* Read sound level */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_SOUND
     ret = sound_sensor_read(&sensor_data->sound_level);
     if (ret == ESP_OK) {
         last_readings[SENSOR_TYPE_SOUND] = sensor_data->sound_level;
         last_timestamps[SENSOR_TYPE_SOUND] = timestamp;
         readings_valid[SENSOR_TYPE_SOUND] = true;
     }
-    
-    /* Read HX711 - Weight */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_HX711
     ret = hx711_read_weight(&sensor_data->weight_g);
     if (ret == ESP_OK) {
         readings_valid[SENSOR_TYPE_HX711] = true;
     }
-    
-    /* Read ACS712 - Current/Power */
+#endif
+
+#ifdef CONFIG_ENABLE_SENSOR_ACS712
     ret = acs712_read_current(&sensor_data->current_amps);
     if (ret == ESP_OK) {
         sensor_data->power_watts = sensor_data->current_amps * 220.0f;
-        
-        /* Update energy counter */
         acs712_update_energy();
         sensor_data->energy_wh = acs712_get_energy_wh();
-        
         readings_valid[SENSOR_TYPE_ACS712] = true;
     }
-    
-    /* Calculate AQI */
+#endif
+
     sensor_data->aqi_level = sensor_manager_calculate_aqi(sensor_data);
     
     return ESP_OK;
@@ -507,56 +593,80 @@ esp_err_t sensor_manager_read(sensor_type_t type, float *value)
     }
     
     switch (type) {
+#ifdef CONFIG_ENABLE_SENSOR_DHT22
         case SENSOR_TYPE_DHT22:
             ret = dht22_read(value, value + 1);
             *value = *(value + 1);
             break;
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_DS18B20
         case SENSOR_TYPE_DS18B20:
             ret = ds18b20_read(value);
             break;
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_MQ135
         case SENSOR_TYPE_MQ135:
             ret = mq135_read(value);
             break;
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_MQ7
         case SENSOR_TYPE_MQ7:
             ret = mq7_read(value);
             break;
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_MQ2
         case SENSOR_TYPE_MQ2:
             ret = mq2_read(value);
             break;
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_LDR
         case SENSOR_TYPE_LDR:
             ret = ldr_read(value);
             break;
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_WATER_LEVEL
         case SENSOR_TYPE_WATER_LEVEL:
             ret = water_level_read((uint8_t *)value);
             *value = *(uint8_t *)value;
             break;
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_SOUND
         case SENSOR_TYPE_SOUND:
             ret = sound_sensor_read(value);
             break;
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_BMP280
         case SENSOR_TYPE_BMP280:
             ret = bmp280_read_pressure(value);
             break;
-        case SENSOR_TYPE_SGP30: {
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_SGP30: {
             uint16_t co2, tvoc;
             ret = sgp30_read(&co2, &tvoc);
             *value = (float)co2;
             break;
         }
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_PMS5003
         case SENSOR_TYPE_PMS5003:
             ret = pms5003_read_pm25((uint16_t *)value);
             break;
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_HX711
         case SENSOR_TYPE_HX711:
             ret = hx711_read_weight(value);
             break;
+#endif
+#ifdef CONFIG_ENABLE_SENSOR_ACS712
         case SENSOR_TYPE_ACS712:
             ret = acs712_read_current(value);
             break;
+#endif
         default:
             return ESP_ERR_NOT_FOUND;
     }
     
     if (ret == ESP_OK) {
-        /* Apply calibration */
         *value = *value * sensor_configs[type].calibration_scale + 
                  sensor_configs[type].calibration_offset;
     }
@@ -569,7 +679,11 @@ esp_err_t sensor_manager_read(sensor_type_t type, float *value)
  */
 esp_err_t sensor_manager_read_pressure(float *pressure_hpa, float *altitude_m)
 {
+#ifdef CONFIG_ENABLE_SENSOR_BMP280
     return bmp280_read_pressure(pressure_hpa);
+#else
+    return ESP_ERR_NOT_FOUND;
+#endif
 }
 
 /**
@@ -577,6 +691,7 @@ esp_err_t sensor_manager_read_pressure(float *pressure_hpa, float *altitude_m)
  */
 esp_err_t sensor_manager_read_air_quality(float *co2_ppm, float *tvoc_ppb)
 {
+#ifdef CONFIG_ENABLE_SENSOR_SGP30
     uint16_t co2, tvoc;
     esp_err_t ret = sgp30_read(&co2, &tvoc);
     
@@ -586,6 +701,9 @@ esp_err_t sensor_manager_read_air_quality(float *co2_ppm, float *tvoc_ppb)
     }
     
     return ret;
+#else
+    return ESP_ERR_NOT_FOUND;
+#endif
 }
 
 /**
@@ -593,6 +711,7 @@ esp_err_t sensor_manager_read_air_quality(float *co2_ppm, float *tvoc_ppb)
  */
 esp_err_t sensor_manager_read_particulate(uint16_t *pm25, uint16_t *pm10)
 {
+#ifdef CONFIG_ENABLE_SENSOR_PMS5003
     pms5003_data_t data;
     esp_err_t ret = pms5003_read(&data);
     
@@ -602,6 +721,9 @@ esp_err_t sensor_manager_read_particulate(uint16_t *pm25, uint16_t *pm10)
     }
     
     return ret;
+#else
+    return ESP_ERR_NOT_FOUND;
+#endif
 }
 
 /**
@@ -609,7 +731,11 @@ esp_err_t sensor_manager_read_particulate(uint16_t *pm25, uint16_t *pm10)
  */
 esp_err_t sensor_manager_read_weight(float *weight_g)
 {
+#ifdef CONFIG_ENABLE_SENSOR_HX711
     return hx711_read_weight(weight_g);
+#else
+    return ESP_ERR_NOT_FOUND;
+#endif
 }
 
 /**
@@ -617,6 +743,7 @@ esp_err_t sensor_manager_read_weight(float *weight_g)
  */
 esp_err_t sensor_manager_read_current(float *current_amps, float *power_watts)
 {
+#ifdef CONFIG_ENABLE_SENSOR_ACS712
     esp_err_t ret = acs712_read_current(current_amps);
     
     if (ret == ESP_OK && power_watts) {
@@ -624,6 +751,9 @@ esp_err_t sensor_manager_read_current(float *current_amps, float *power_watts)
     }
     
     return ret;
+#else
+    return ESP_ERR_NOT_FOUND;
+#endif
 }
 
 /**
@@ -631,7 +761,11 @@ esp_err_t sensor_manager_read_current(float *current_amps, float *power_watts)
  */
 esp_err_t sensor_manager_tare_weight(uint8_t samples)
 {
+#ifdef CONFIG_ENABLE_SENSOR_HX711
     return hx711_tare(samples);
+#else
+    return ESP_ERR_NOT_FOUND;
+#endif
 }
 
 /**
@@ -639,15 +773,18 @@ esp_err_t sensor_manager_tare_weight(uint8_t samples)
  */
 esp_err_t sensor_manager_calibrate_weight(float known_weight_g)
 {
+#ifdef CONFIG_ENABLE_SENSOR_HX711
     int32_t raw;
     esp_err_t ret = hx711_read_raw(&raw);
     if (ret != ESP_OK) {
         return ret;
     }
     
-    /* Calculate new calibration factor */
     float cal_factor = (float)(raw - hx711_get_offset()) / known_weight_g;
     return hx711_set_calibration(cal_factor);
+#else
+    return ESP_ERR_NOT_FOUND;
+#endif
 }
 
 /**
@@ -655,7 +792,11 @@ esp_err_t sensor_manager_calibrate_weight(float known_weight_g)
  */
 esp_err_t sensor_manager_calibrate_current(int offset)
 {
+#ifdef CONFIG_ENABLE_SENSOR_ACS712
     return acs712_set_offset(offset);
+#else
+    return ESP_ERR_NOT_FOUND;
+#endif
 }
 
 /**
@@ -667,9 +808,13 @@ esp_err_t sensor_manager_get_energy(float *energy_wh)
         return ESP_ERR_INVALID_ARG;
     }
     
+#ifdef CONFIG_ENABLE_SENSOR_ACS712
     acs712_update_energy();
     *energy_wh = acs712_get_energy_wh();
     return ESP_OK;
+#else
+    return ESP_ERR_NOT_FOUND;
+#endif
 }
 
 /**
@@ -677,7 +822,11 @@ esp_err_t sensor_manager_get_energy(float *energy_wh)
  */
 esp_err_t sensor_manager_reset_energy(void)
 {
+#ifdef CONFIG_ENABLE_SENSOR_ACS712
     return acs712_reset_energy();
+#else
+    return ESP_ERR_NOT_FOUND;
+#endif
 }
 
 /**
@@ -693,7 +842,6 @@ esp_err_t sensor_manager_calibrate(sensor_type_t type, float reference)
         return ESP_FAIL;
     }
     
-    /* Calculate calibration offset */
     sensor_configs[type].calibration_offset = reference - last_readings[type];
     
     ESP_LOGI(TAG, "Calibrated sensor %d: offset=%.2f", type, 
@@ -754,7 +902,6 @@ esp_err_t sensor_manager_self_test(void)
     
     ESP_LOGI(TAG, "Running sensor self-test...");
     
-    /* Test each sensor */
     for (int i = 0; i < SENSOR_TYPE_MAX; i++) {
         if (!sensor_configs[i].enabled) {
             continue;
