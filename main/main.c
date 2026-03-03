@@ -199,9 +199,9 @@ static void comm_task(void *pvParameters)
         if (g_system_state.wifi_connected && g_system_state.mqtt_connected) {
             /* Publish sensor data */
             if (tick_count % (MQTT_PUBLISH_INTERVAL / CONTROL_LOOP_INTERVAL) == 0) {
-                sensor_data_t *data = control_manager_get_sensor_data();
-                if (data != NULL) {
-                    comm_manager_publish_sensors(data);
+                sensor_data_t data;
+                if (control_manager_get_sensor_data(&data) == ESP_OK) {
+                    comm_manager_publish_sensors(&data);
                 }
                 
                 /* Publish actuator state */
@@ -229,9 +229,9 @@ static void storage_task(void *pvParameters)
     
     while (1) {
         /* Log sensor data to storage */
-        sensor_data_t *data = control_manager_get_sensor_data();
-        if (data != NULL) {
-            storage_log_sensor_data(data);
+        sensor_data_t data;
+        if (control_manager_get_sensor_data(&data) == ESP_OK) {
+            storage_log_sensor_data(&data);
         }
         
         vTaskDelay(pdMS_TO_TICKS(STORAGE_LOG_INTERVAL));
