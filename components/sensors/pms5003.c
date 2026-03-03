@@ -269,7 +269,7 @@ esp_err_t pms5003_reset(void)
 esp_err_t pms5003_set_mode(uint8_t mode)
 {
     /* Mode: 0=Passive, 1=Active */
-    const uint8_t cmd[7] = {0x42, 0x4D, 0xE3, 0x00, 0x01, mode, 0};
+    uint8_t cmd[7] = {0x42, 0x4D, 0xE3, 0x00, 0x01, mode, 0};
     cmd[6] = pms5003_calc_checksum((uint8_t *)cmd, 6);
     
     int written = uart_write_bytes(s_uart_num, (const char *)cmd, 7);
