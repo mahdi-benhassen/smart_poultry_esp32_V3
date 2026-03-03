@@ -7,13 +7,15 @@
 #include <string.h>
 #include <esp_log.h>
 #include <esp_err.h>
-#include <driver/adc.h>
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 #include "acs712.h"
 
 static const char *TAG = "ACS712";
 
 /* ADC Configuration */
-#define ACS712_ADC_WIDTH     ADC_WIDTH_BIT_12
+#define ACS712_ADC_WIDTH     ADC_BITWIDTH_12
 #define ACS712_ADC_ATTEN     ADC_ATTEN_DB_11
 
 /* Voltage reference (mV) */
@@ -29,6 +31,7 @@ static const char *TAG = "ACS712";
 
 /* Global state */
 static adc_channel_t s_adc_channel = ADC_CHANNEL_0;
+static adc_oneshot_unit_handle_t s_adc_handle = NULL;
 static bool s_initialized = false;
 static acs712_model_t s_model = ACS712_20A;
 static float s_sensitivity = ACS712_20A_SENSITIVITY;
@@ -40,24 +43,6 @@ static int s_filtered_value = 0;
 static float s_cumulative_energy_wh = 0.0f;
 static float s_last_current = 0.0f;
 static uint32_t s_last_update_time = 0;
-
-/**
- * @brief Initialize ADC for ACS712
- */
-static esp_err_t acs712_adc_init(adc_channel_t channel)
-{
-    adc_unit_t unit;
-    
-    if (channel < ADC_CHANNEL_8) {
-        unit = ADC_UNIT_1;
-    } else {
-        unit = ADC_UNIT_2;
-    }
-    
-    adc_gpio_init(unit, channel);
-    
-    return ESP_OK;
-}
 
 /**
  * @brief Initialize ACS712 sensor
@@ -80,43 +65,24 @@ esp_err_t acs712_init(acs712_model_t model, adc_channel_t adc_channel)
             break;
     }
     
-    /* Initialize ADC */
-    esp_err_t ret = acs712_adc_init(adc_channel);
+    /* Initialize ADC Oneshot Unit */
+    adc_oneshot_unit_init_cfg_t init_config = {
+        .unit_id = ADC_UNIT_1,
+    };
+    
+    esp_err_t ret = adc_oneshot_new_unit(&init_config, &s_adc_handle);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize ADC");
+        ESP_LOGE(TAG, "Failed to create ADC oneshot unit");
         return ret;
     }
     
-    /* Configure ADC */
-    adc_continuous_config_t cont_config = {
-        .pattern_num = 1,
-        .adc_pattern = {
-            {
-                .atten = ACS712_ADC_ATTEN,
-                .channel = adc_channel,
-                .width = ACS712_ADC_WIDTH,
-            }
-        },
-        .sample_freq_hz = 10000,
-        .conv_frame_size = 100,
-    };
-    
-    /* For simplicity, using oneshot mode */
-    adc_oneshot_unit_init_cfg_t init_cfg = {
-        .unit_id = (adc_channel < ADC_CHANNEL_8) ? ADC_UNIT_1 : ADC_UNIT_2,
-    };
-    
-    ret = adc_oneshot_new_unit(&init_cfg, NULL);
-    if (ret != ESP_OK) {
-        ESP_LOGW(TAG, "ADC unit already initialized");
-    }
-    
-    adc_oneshot_chan_cfg_t chan_cfg = {
+    /* Configure ADC channel */
+    adc_oneshot_chan_cfg_t chan_config = {
         .atten = ACS712_ADC_ATTEN,
         .bitwidth = ACS712_ADC_WIDTH,
     };
     
-    ret = adc_oneshot_config_channel(0, adc_channel, &chan_cfg);
+    ret = adc_oneshot_config_channel(s_adc_handle, adc_channel, &chan_config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to configure ADC channel");
         return ret;
@@ -146,7 +112,7 @@ esp_err_t acs712_read_raw(int *adc_value)
     
     /* Read ADC value */
     int raw;
-    esp_err_t ret = adc_oneshot_read(0, s_adc_channel, &raw);
+    esp_err_t ret = adc_oneshot_read(s_adc_handle, s_adc_channel, &raw);
     if (ret != ESP_OK) {
         return ret;
     }
@@ -190,7 +156,7 @@ esp_err_t acs712_read_current(float *current_amps)
         current = (float)s_filtered_value / 100.0f;
     }
     
-    /* Handle negative values ( bidirectional current) */
+    /* Handle negative values (bidirectional current) */
     if (current < 0 && current > -0.1f) {
         current = 0.0f;  /* Ignore small negative values (noise) */
     }
