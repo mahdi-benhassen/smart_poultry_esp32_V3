@@ -7,6 +7,7 @@
 #include <esp_log.h>
 #include "decision_algorithm.h"
 #include "pid_controller.h"
+#include "sensor_manager.h"
 #include "../../main/include/main.h"
 
 static const char *TAG = "DECISION_ALGO";

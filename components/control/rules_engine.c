@@ -5,6 +5,7 @@
 #include <string.h>
 #include <esp_log.h>
 #include "rules_engine.h"
+#include "sensor_manager.h"
 
 static const char *TAG = "RULES_ENGINE";
 

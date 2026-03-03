@@ -40,17 +40,8 @@ typedef struct {
 /* Global system state */
 extern system_state_t g_system_state;
 
-/* Actuator State */
-typedef struct {
-    uint8_t fan1_speed;
-    uint8_t fan2_speed;
-    bool cooling_pad_on;
-    uint8_t heater_level;
-    uint8_t light_level;
-    bool feeder_active;
-    bool pump_on;
-    bool alarm_active;
-} actuator_state_t;
+/* Actuator State - defined in actuator_manager.h */
+#include "../../components/actuators/include/actuator_manager.h"
 
 /* System Configuration */
 typedef struct {
