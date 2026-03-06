@@ -20,6 +20,7 @@
 #include "control_manager.h"
 #include "comm_manager.h"
 #include "storage_manager.h"
+#include "task_watchdog.h"
 
 static const char *TAG = "MAIN";
 
@@ -158,13 +159,16 @@ static void sensor_task(void *pvParameters)
         if (sensor_manager_read_all(&sensor_data) == ESP_OK) {
             /* Store sensor data for control and communication */
             control_manager_update_sensors(&sensor_data);
-            
+
             ESP_LOGD(TAG, "Sensor readings: Temp=%.1f, Humidity=%.1f, Ammonia=%.1f",
                      sensor_data.temperature, sensor_data.humidity, sensor_data.ammonia_ppm);
         } else {
             ESP_LOGW(TAG, "Failed to read sensors");
         }
-        
+
+        /* Pet watchdog */
+        TASK_WATCHDOG_PET();
+
         vTaskDelay(pdMS_TO_TICKS(SENSOR_READ_INTERVAL));
         tick_count++;
     }
@@ -315,20 +319,32 @@ void app_main(void)
     init_wifi();
     
     /* Create system tasks */
-    xTaskCreate(sensor_task, "sensor_task", SENSOR_TASK_STACK, 
+    xTaskCreate(sensor_task, "sensor_task", SENSOR_TASK_STACK,
                 NULL, SENSOR_TASK_PRIORITY, &sensor_task_handle);
-    
-    xTaskCreate(control_task, "control_task", CONTROL_TASK_STACK, 
+
+    xTaskCreate(control_task, "control_task", CONTROL_TASK_STACK,
                 NULL, CONTROL_TASK_PRIORITY, &control_task_handle);
-    
-    xTaskCreate(comm_task, "comm_task", COMM_TASK_STACK, 
+
+    xTaskCreate(comm_task, "comm_task", COMM_TASK_STACK,
                 NULL, COMM_TASK_PRIORITY, &comm_task_handle);
-    
-    xTaskCreate(storage_task, "storage_task", STORAGE_TASK_STACK, 
+
+    xTaskCreate(storage_task, "storage_task", STORAGE_TASK_STACK,
                 NULL, STORAGE_TASK_PRIORITY, &storage_task_handle);
-    
+
+    /* Register tasks with watchdog */
+    if (task_watchdog_init() == ESP_OK) {
+        task_watchdog_add_task(sensor_task_handle, "sensor_task",
+                              SENSOR_READ_INTERVAL * 3, WATCHDOG_SEVERITY_MEDIUM);
+        task_watchdog_add_task(control_task_handle, "control_task",
+                              CONTROL_LOOP_INTERVAL * 3, WATCHDOG_SEVERITY_MEDIUM);
+        task_watchdog_add_task(comm_task_handle, "comm_task",
+                              MQTT_PUBLISH_INTERVAL * 2, WATCHDOG_SEVERITY_LOW);
+        task_watchdog_add_task(storage_task_handle, "storage_task",
+                              STORAGE_LOG_INTERVAL * 3, WATCHDOG_SEVERITY_LOW);
+    }
+
     /* Mark system as initialized */
     g_system_state.initialized = true;
-    
+
     ESP_LOGI(TAG, "System initialization complete");
 }

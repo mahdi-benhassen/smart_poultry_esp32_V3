@@ -76,49 +76,94 @@ typedef enum {
     AQI_HAZARDOUS = 5
 } aqi_level_t;
 
-/* Sensor Data Structure - Extended for new sensors */
+/* Sensor Data Structure - Optimized Union-based Structure */
 typedef struct sensor_data {
-    /* Environmental sensors */
-    float temperature;
-    float humidity;
-    float temperature_ds18b20;
-    float water_temperature;
-    float pressure_hpa;         /* BMP280 - Barometric pressure */
-    float altitude_m;           /* BMP280 - Altitude */
-    
-    /* Gas sensors */
-    float ammonia_ppm;
-    float co_ppm;
-    float co2_ppm;
-    float h2s_ppm;
-    float lpg_ppm;
-    float tvoc_ppb;             /* SGP30 - Total Volatile Organic Compounds */
-    
-    /* Particulate matter (PMS5003) */
-    uint16_t pm1_0_atm;         /* PM1.0 atmospheric */
-    uint16_t pm2_5_atm;         /* PM2.5 atmospheric */
-    uint16_t pm10_atm;          /* PM10 atmospheric */
-    
-    /* Light and power */
-    float light_percent;
-    uint8_t water_level;
-    float sound_level;
-    
-    /* Weight sensor (HX711) */
-    float weight_g;             /* Bird/equipment weight in grams */
-    
-    /* Current/Energy monitoring (ACS712) */
-    float current_amps;          /* Current in Amperes */
-    float power_watts;          /* Power consumption in Watts */
-    float energy_wh;            /* Cumulative energy in Watt-hours */
-    
-    /* Air Quality Index */
-    aqi_level_t aqi_level;
-    uint16_t aqi_value;
-    
-    /* Timestamp */
+    /* Common fields */
     uint32_t timestamp;
+
+    /* Core environmental measurements (always present) */
+    struct {
+        float temperature;      /* Primary temperature */
+        float humidity;         /* Humidity */
+        uint16_t aqi_value;     /* Air Quality Index */
+        aqi_level_t aqi_level;  /* AQI level */
+    } core;
+
+    /* Union for optional sensors - saves ~40 bytes when sensors are disabled */
+    union {
+        struct {
+            /* Extended temperature/pressure */
+            float temperature_ds18b20;
+            float water_temperature;
+            float pressure_hpa;         /* BMP280 */
+            float altitude_m;           /* BMP280 */
+
+            /* Gas sensors */
+            float ammonia_ppm;
+            float co_ppm;
+            float co2_ppm;
+            float h2s_ppm;
+            float lpg_ppm;
+            float tvoc_ppb;             /* SGP30 */
+
+            /* Particulate matter */
+            uint16_t pm1_0_atm;         /* PM1.0 atmospheric */
+            uint16_t pm2_5_atm;         /* PM2.5 atmospheric */
+            uint16_t pm10_atm;          /* PM10 atmospheric */
+
+            /* Environmental */
+            float light_percent;
+            uint8_t water_level;
+            float sound_level;
+
+            /* Weight and power */
+            float weight_g;             /* HX711 */
+            float current_amps;          /* ACS712 */
+            float power_watts;          /* ACS712 */
+            float energy_wh;            /* ACS712 */
+        } extended;
+
+        /* Alternative: Compact representation when minimal sensors enabled */
+        struct {
+            float gas_reading;
+            float environment_reading;
+            float power_reading;
+        } minimal;
+    } data;
+
+    /* Bitmask indicating which sensors are present/enabled */
+    uint32_t sensors_present;
+
+    /* Flags for sensor readings validity */
+    uint32_t readings_valid;  /* One per sensor type */
+
 } sensor_data_t;
+
+/* Macros for accessing sensor data in backward-compatible way */
+#define SENSOR_DATA_TEMP(sd)                     ((sd)->core.temperature)
+#define SENSOR_DATA_HUMIDITY(sd)                 ((sd)->core.humidity)
+#define SENSOR_DATA_TEMP_DS18B20(sd)             ((sd)->data.extended.temperature_ds18b20)
+#define SENSOR_DATA_WATER_TEMP(sd)               ((sd)->data.extended.water_temperature)
+#define SENSOR_DATA_PRESSURE(sd)                 ((sd)->data.extended.pressure_hpa)
+#define SENSOR_DATA_ALTITUDE(sd)                 ((sd)->data.extended.altitude_m)
+#define SENSOR_DATA_AMMONIA(sd)                  ((sd)->data.extended.ammonia_ppm)
+#define SENSOR_DATA_CO(sd)                       ((sd)->data.extended.co_ppm)
+#define SENSOR_DATA_CO2(sd)                      ((sd)->data.extended.co2_ppm)
+#define SENSOR_DATA_H2S(sd)                      ((sd)->data.extended.h2s_ppm)
+#define SENSOR_DATA_LPG(sd)                      ((sd)->data.extended.lpg_ppm)
+#define SENSOR_DATA_TVOC(sd)                     ((sd)->data.extended.tvoc_ppb)
+#define SENSOR_DATA_PM1_0(sd)                    ((sd)->data.extended.pm1_0_atm)
+#define SENSOR_DATA_PM2_5(sd)                    ((sd)->data.extended.pm2_5_atm)
+#define SENSOR_DATA_PM10(sd)                     ((sd)->data.extended.pm10_atm)
+#define SENSOR_DATA_LIGHT(sd)                    ((sd)->data.extended.light_percent)
+#define SENSOR_DATA_WATER_LEVEL(sd)              ((sd)->data.extended.water_level)
+#define SENSOR_DATA_SOUND(sd)                    ((sd)->data.extended.sound_level)
+#define SENSOR_DATA_WEIGHT(sd)                   ((sd)->data.extended.weight_g)
+#define SENSOR_DATA_CURRENT(sd)                  ((sd)->data.extended.current_amps)
+#define SENSOR_DATA_POWER(sd)                    ((sd)->data.extended.power_watts)
+#define SENSOR_DATA_ENERGY(sd)                   ((sd)->data.extended.energy_wh)
+#define SENSOR_DATA_AQI(sd)                      ((sd)->core.aqi_value)
+#define SENSOR_DATA_AQI_LEVEL(sd)                ((sd)->core.aqi_level)
 
 /* Sensor reading */
 typedef struct {

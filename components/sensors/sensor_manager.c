@@ -440,49 +440,65 @@ aqi_level_t sensor_manager_calculate_aqi(const sensor_data_t *data)
 }
 
 /**
- * @brief Read all sensor data
+ * @brief Read temperature sensors with priority logic
  */
-esp_err_t sensor_manager_read_all(void *data)
+static esp_err_t read_temperature_sensors(sensor_data_t *sensor_data, uint32_t timestamp)
 {
-    sensor_data_t *sensor_data = (sensor_data_t *)data;
     esp_err_t ret;
-    uint32_t timestamp = esp_log_timestamp();
-    
-    memset(sensor_data, 0, sizeof(sensor_data_t));
-    sensor_data->timestamp = timestamp;
-    
+    float temp_readings[3] = {0};  // DHT22, DS18B20, BMP280
+    bool temp_valid[3] = {false};
+
 #ifdef CONFIG_ENABLE_SENSOR_DHT22
-    ret = dht22_read(&sensor_data->temperature, &sensor_data->humidity);
+    ret = dht22_read(&temp_readings[0], &SENSOR_DATA_HUMIDITY(sensor_data));
     if (ret == ESP_OK) {
-        last_readings[SENSOR_TYPE_DHT22] = sensor_data->temperature;
+        temp_valid[0] = true;
+        last_readings[SENSOR_TYPE_DHT22] = temp_readings[0];
         last_timestamps[SENSOR_TYPE_DHT22] = timestamp;
         readings_valid[SENSOR_TYPE_DHT22] = true;
     }
 #endif
 
 #ifdef CONFIG_ENABLE_SENSOR_DS18B20
-    ret = ds18b20_read(&sensor_data->temperature_ds18b20);
+    ret = ds18b20_read(&SENSOR_DATA_TEMP_DS18B20(sensor_data));
     if (ret == ESP_OK) {
-        last_readings[SENSOR_TYPE_DS18B20] = sensor_data->temperature_ds18b20;
+        temp_valid[1] = true;
+        last_readings[SENSOR_TYPE_DS18B20] = SENSOR_DATA_TEMP_DS18B20(sensor_data);
         last_timestamps[SENSOR_TYPE_DS18B20] = timestamp;
         readings_valid[SENSOR_TYPE_DS18B20] = true;
+        temp_readings[1] = SENSOR_DATA_TEMP_DS18B20(sensor_data);
     }
 #endif
 
-    if (readings_valid[SENSOR_TYPE_DHT22]) {
-        sensor_data->temperature = sensor_data->temperature;
-    } else if (readings_valid[SENSOR_TYPE_DS18B20]) {
-        sensor_data->temperature = sensor_data->temperature_ds18b20;
-    }
-    
 #ifdef CONFIG_ENABLE_SENSOR_BMP280
-    ret = bmp280_read(&sensor_data->temperature, &sensor_data->pressure_hpa);
+    float pressure_hpa;
+    ret = bmp280_read(&temp_readings[2], &pressure_hpa);
     if (ret == ESP_OK) {
-        last_readings[SENSOR_TYPE_BMP280] = sensor_data->pressure_hpa;
+        SENSOR_DATA_PRESSURE(sensor_data) = pressure_hpa;
+        last_readings[SENSOR_TYPE_BMP280] = pressure_hpa;
         readings_valid[SENSOR_TYPE_BMP280] = true;
-        bmp280_read_altitude(1013.25f, &sensor_data->altitude_m);
+        bmp280_read_altitude(1013.25f, &SENSOR_DATA_ALTITUDE(sensor_data));
+        temp_valid[2] = true;
     }
 #endif
+
+    /* Priority: DHT22 -> DS18B20 -> BMP280 */
+    if (temp_valid[0]) {
+        SENSOR_DATA_TEMP(sensor_data) = temp_readings[0];
+    } else if (temp_valid[1]) {
+        SENSOR_DATA_TEMP(sensor_data) = temp_readings[1];
+    } else if (temp_valid[2]) {
+        SENSOR_DATA_TEMP(sensor_data) = temp_readings[2];
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Read air quality sensors
+ */
+static esp_err_t read_air_quality_sensors(sensor_data_t *sensor_data, uint32_t timestamp)
+{
+    esp_err_t ret;
 
 #ifdef CONFIG_ENABLE_SENSOR_MQ135
     ret = mq135_read(&sensor_data->ammonia_ppm);
@@ -532,6 +548,16 @@ esp_err_t sensor_manager_read_all(void *data)
     }
 #endif
 
+    return ESP_OK;
+}
+
+/**
+ * @brief Read environmental sensors
+ */
+static esp_err_t read_environmental_sensors(sensor_data_t *sensor_data, uint32_t timestamp)
+{
+    esp_err_t ret;
+
 #ifdef CONFIG_ENABLE_SENSOR_LDR
     ret = ldr_read(&sensor_data->light_percent);
     if (ret == ESP_OK) {
@@ -559,6 +585,16 @@ esp_err_t sensor_manager_read_all(void *data)
     }
 #endif
 
+    return ESP_OK;
+}
+
+/**
+ * @brief Read power and weight sensors
+ */
+static esp_err_t read_power_weight_sensors(sensor_data_t *sensor_data, uint32_t timestamp)
+{
+    esp_err_t ret;
+
 #ifdef CONFIG_ENABLE_SENSOR_HX711
     ret = hx711_read_weight(&sensor_data->weight_g);
     if (ret == ESP_OK) {
@@ -576,8 +612,35 @@ esp_err_t sensor_manager_read_all(void *data)
     }
 #endif
 
-    sensor_data->aqi_level = sensor_manager_calculate_aqi(sensor_data);
-    
+    return ESP_OK;
+}
+
+/**
+ * @brief Read all sensor data
+ */
+esp_err_t sensor_manager_read_all(void *data)
+{
+    sensor_data_t *sensor_data = (sensor_data_t *)data;
+    uint32_t timestamp = esp_log_timestamp();
+
+    memset(sensor_data, 0, sizeof(sensor_data_t));
+    sensor_data->timestamp = timestamp;
+
+    /* Read temperature sensors with priority logic */
+    read_temperature_sensors(sensor_data, timestamp);
+
+    /* Read air quality sensors */
+    read_air_quality_sensors(sensor_data, timestamp);
+
+    /* Read environmental sensors */
+    read_environmental_sensors(sensor_data, timestamp);
+
+    /* Read power and weight sensors */
+    read_power_weight_sensors(sensor_data, timestamp);
+
+    /* Calculate AQI */
+    SENSOR_DATA_AQI_LEVEL(sensor_data) = sensor_manager_calculate_aqi(sensor_data);
+
     return ESP_OK;
 }
 
